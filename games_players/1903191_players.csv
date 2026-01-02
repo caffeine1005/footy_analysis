@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903191,26,401633,Giorgi Mamardashvili,True,103,25,GK
+1,1903191,26,424945,Conor Bradley,True,66,12,DR
+2,1903191,26,345957,Ibrahima Konaté,True,103,5,DC
+3,1903191,26,95408,Virgil van Dijk,True,103,4,DC
+4,1903191,26,424273,Milos Kerkez,True,103,6,DL
+5,1903191,26,345319,Alexis Mac Allister,True,66,10,DMC
+6,1903191,26,363884,Ryan Gravenberch,True,66,38,DMC
+7,1903191,26,108226,Mohamed Salah,True,89,11,AMR
+8,1903191,26,369875,Dominik Szoboszlai,True,103,8,AMC
+9,1903191,26,352825,Cody Gakpo,True,103,18,AML
+10,1903191,26,299254,Alexander Isak,True,76,9,FW
+11,1903191,26,403784,Hugo Ekitiké,False,37,22,Sub
+12,1903191,26,394786,Florian Wirtz,False,37,7,Sub
+13,1903191,26,322971,Federico Chiesa,False,27,14,Sub
+14,1903191,26,392644,Jeremie Frimpong,False,14,30,Sub
+15,1903191,26,355354,Curtis Jones,False,37,17,Sub
+16,1903191,26,548566,Rio Ngumoha,False,0,73,Sub
+17,1903191,26,136451,Joe Gomez,False,0,2,Sub
+18,1903191,26,136466,Freddie Woodman,False,0,28,Sub
+19,1903191,26,115726,Andy Robertson,False,0,26,Sub
+20,1903191,32,402184,Senne Lammens,True,103,31,GK
+21,1903191,32,320374,Matthijs de Ligt,True,103,4,DC
+22,1903191,32,99487,Harry Maguire,True,103,5,DC
+23,1903191,32,118244,Luke Shaw,True,89,23,DC
+24,1903191,32,386634,Amad Diallo,True,63,16,DMR
+25,1903191,32,353418,Diogo Dalot,True,103,2,DML
+26,1903191,32,88526,Casemiro,True,62,18,MC
+27,1903191,32,123761,Bruno Fernandes,True,89,8,MC
+28,1903191,32,353377,Bryan Mbeumo,True,103,19,AMC
+29,1903191,32,343346,Mason Mount,True,65,7,AMC
+30,1903191,32,362758,Matheus Cunha,True,103,10,FW
+31,1903191,32,495260,Patrick Dorgu,False,40,13,Sub
+32,1903191,32,437299,Leny Yoro,False,14,15,Sub
+33,1903191,32,424191,Benjamin Sesko,False,38,30,Sub
+34,1903191,32,408962,Manuel Ugarte,False,41,25,Sub
+35,1903191,32,460260,Kobbie Mainoo,False,14,37,Sub
+36,1903191,32,349932,Noussair Mazraoui,False,0,3,Sub
+37,1903191,32,383956,Joshua Zirkzee,False,0,11,Sub
+38,1903191,32,361707,Altay Bayindir,False,0,1,Sub
+39,1903191,32,517341,Ayden Heaven,False,0,26,Sub

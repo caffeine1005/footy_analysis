@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903234,32,402184,Senne Lammens,True,99,31,GK
+1,1903234,32,437299,Leny Yoro,True,99,15,DC
+2,1903234,32,320374,Matthijs de Ligt,True,99,4,DC
+3,1903234,32,118244,Luke Shaw,True,99,23,DC
+4,1903234,32,349932,Noussair Mazraoui,True,50,3,DMR
+5,1903234,32,495260,Patrick Dorgu,True,62,13,DML
+6,1903234,32,88526,Casemiro,True,62,18,MC
+7,1903234,32,123761,Bruno Fernandes,True,99,8,MC
+8,1903234,32,353377,Bryan Mbeumo,True,99,19,AMC
+9,1903234,32,386634,Amad Diallo,True,99,16,AMC
+10,1903234,32,383956,Joshua Zirkzee,True,99,11,FW
+11,1903234,32,353418,Diogo Dalot,False,37,2,Sub
+12,1903234,32,460260,Kobbie Mainoo,False,37,37,Sub
+13,1903234,32,343346,Mason Mount,False,49,7,Sub
+14,1903234,32,340105,Lisandro Martínez,False,0,6,Sub
+15,1903234,32,345303,Tyrell Malacia,False,0,12,Sub
+16,1903234,32,361707,Altay Bayindir,False,0,1,Sub
+17,1903234,32,408962,Manuel Ugarte,False,0,25,Sub
+18,1903234,32,517341,Ayden Heaven,False,0,26,Sub
+19,1903234,32,563779,Shea Lacey,False,0,61,Sub
+20,1903234,31,110189,Jordan Pickford,True,99,1,GK
+21,1903234,31,31826,Séamus Coleman,True,9,23,DR
+22,1903234,31,107941,Michael Keane,True,99,5,DC
+23,1903234,31,131464,James Tarkowski,True,99,6,DC
+24,1903234,31,345516,Vitalii Mykolenko,True,99,16,DL
+25,1903234,31,80464,Idrissa Gueye,True,12,27,DMC
+26,1903234,31,367781,James Garner,True,99,37,DMC
+27,1903234,31,366116,Iliman Ndiaye,True,85,10,AMR
+28,1903234,31,391256,Kiernan Dewsbury-Hall,True,92,22,AMC
+29,1903234,31,113069,Jack Grealish,True,92,18,AML
+30,1903234,31,537713,Thierno Barry,True,85,11,FW
+31,1903234,31,424495,Jake O'Brien,False,90,15,Sub
+32,1903234,31,380546,Beto,False,14,9,Sub
+33,1903234,31,357427,Dwight McNeil,False,7,7,Sub
+34,1903234,31,416208,Tim Iroegbunam,False,14,42,Sub
+35,1903234,31,391348,Charly Alcaraz,False,7,24,Sub
+36,1903234,31,362806,Mark Travers,False,0,12,Sub
+37,1903234,31,513607,Adam Aznou,False,0,39,Sub
+38,1903234,31,438067,Tyler Dibling,False,0,20,Sub
+39,1903234,31,243164,Tom King,False,0,31,Sub

@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903254,32,402184,Senne Lammens,True,97,31,GK
+1,1903254,32,349932,Noussair Mazraoui,True,97,3,DC
+2,1903254,32,517341,Ayden Heaven,True,47,26,DC
+3,1903254,32,118244,Luke Shaw,True,89,23,DC
+4,1903254,32,386634,Amad Diallo,True,97,16,DMR
+5,1903254,32,353418,Diogo Dalot,True,69,2,DML
+6,1903254,32,88526,Casemiro,True,97,18,MC
+7,1903254,32,123761,Bruno Fernandes,True,97,8,MC
+8,1903254,32,362758,Matheus Cunha,True,78,10,AMC
+9,1903254,32,353377,Bryan Mbeumo,True,97,19,AMC
+10,1903254,32,383956,Joshua Zirkzee,True,79,11,FW
+11,1903254,32,340105,Lisandro Martínez,False,8,6,Sub
+12,1903254,32,495260,Patrick Dorgu,False,28,13,Sub
+13,1903254,32,437299,Leny Yoro,False,50,15,Sub
+14,1903254,32,408962,Manuel Ugarte,False,19,25,Sub
+15,1903254,32,343346,Mason Mount,False,18,7,Sub
+16,1903254,32,345303,Tyrell Malacia,False,0,12,Sub
+17,1903254,32,361707,Altay Bayindir,False,0,1,Sub
+18,1903254,32,460260,Kobbie Mainoo,False,0,37,Sub
+19,1903254,32,563779,Shea Lacey,False,0,61,Sub
+20,1903254,29,92516,Alphonse Areola,True,97,23,GK
+21,1903254,29,331924,Aaron Wan-Bissaka,True,97,29,DR
+22,1903254,29,361710,Jean-Clair Todibo,True,97,25,DC
+23,1903254,29,351127,Konstantinos Mavropanos,True,97,15,DC
+24,1903254,29,479288,El Hadji Malick Diouf,True,97,12,DL
+25,1903254,29,443815,Soungoutou Magassa,True,97,27,DMC
+26,1903254,29,429534,Freddie Potts,True,84,32,DMC
+27,1903254,29,143595,Tomás Soucek,True,84,28,AMR
+28,1903254,29,322596,Jarrod Bowen,True,97,20,AMC
+29,1903254,29,447231,Mateus Fernandes,True,97,18,AML
+30,1903254,29,134115,Callum Wilson,True,88,9,FW
+31,1903254,29,511560,Mohamadou Kanté,False,13,55,Sub
+32,1903254,29,368310,Maximilian Kilman,False,9,3,Sub
+33,1903254,29,451945,Andy Irving,False,13,39,Sub
+34,1903254,29,303876,Guido Rodríguez,False,0,24,Sub
+35,1903254,29,409426,Mads Hermansen,False,0,1,Sub
+36,1903254,29,313672,Kyle Walker-Peters,False,0,2,Sub
+37,1903254,29,547084,Ezra Mayers,False,0,63,Sub
+38,1903254,29,484501,Callum Marshall,False,0,50,Sub
+39,1903254,29,491564,George Earthy,False,0,40,Sub

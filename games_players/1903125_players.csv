@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903125,32,361707,Altay Bayindir,True,98,1,GK
+1,1903125,32,437299,Leny Yoro,True,98,15,DC
+2,1903125,32,320374,Matthijs de Ligt,True,98,4,DC
+3,1903125,32,118244,Luke Shaw,True,81,23,DC
+4,1903125,32,353418,Diogo Dalot,True,56,2,DMR
+5,1903125,32,495260,Patrick Dorgu,True,98,13,DML
+6,1903125,32,88526,Casemiro,True,66,18,MC
+7,1903125,32,123761,Bruno Fernandes,True,98,8,MC
+8,1903125,32,353377,Bryan Mbeumo,True,98,19,AMC
+9,1903125,32,343346,Mason Mount,True,66,7,AMC
+10,1903125,32,362758,Matheus Cunha,True,98,10,FW
+11,1903125,32,424191,Benjamin Sesko,False,32,30,Sub
+12,1903125,32,408962,Manuel Ugarte,False,32,25,Sub
+13,1903125,32,99487,Harry Maguire,False,17,5,Sub
+14,1903125,32,386634,Amad Diallo,False,42,16,Sub
+15,1903125,32,383956,Joshua Zirkzee,False,0,11,Sub
+16,1903125,32,455860,Tyler Fredricson,False,0,33,Sub
+17,1903125,32,460260,Kobbie Mainoo,False,0,37,Sub
+18,1903125,32,517341,Ayden Heaven,False,0,26,Sub
+19,1903125,32,17708,Tom Heaton,False,0,22,Sub
+20,1903125,13,276366,David Raya,True,98,1,GK
+21,1903125,13,322036,Ben White,True,72,4,DR
+22,1903125,13,334087,Gabriel Magalhães,True,98,6,DC
+23,1903125,13,361822,William Saliba,True,98,2,DC
+24,1903125,13,386519,Riccardo Calafiori,True,73,33,DL
+25,1903125,13,247454,Martin Ødegaard,True,98,8,MC
+26,1903125,13,372424,Martín Zubimendi,True,98,36,MC
+27,1903125,13,332325,Declan Rice,True,84,41,MC
+28,1903125,13,367185,Bukayo Saka,True,98,7,FWR
+29,1903125,13,362815,Viktor Gyökeres,True,61,14,FW
+30,1903125,13,380706,Gabriel Martinelli,True,61,11,FWL
+31,1903125,13,326413,Kai Havertz,False,37,29,Sub
+32,1903125,13,388650,Jurriën Timber,False,26,12,Sub
+33,1903125,13,238916,Mikel Merino,False,14,23,Sub
+34,1903125,13,389935,Noni Madueke,False,37,20,Sub
+35,1903125,13,467918,Myles Lewis-Skelly,False,25,49,Sub
+36,1903125,13,113994,Leandro Trossard,False,0,19,Sub
+37,1903125,13,113880,Kepa Arrizabalaga,False,0,13,Sub
+38,1903125,13,425591,Cristhian Mosquera,False,0,3,Sub
+39,1903125,13,456771,Ethan Nwaneri,False,0,22,Sub
