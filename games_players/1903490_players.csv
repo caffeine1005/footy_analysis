@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903490,32,402184,Senne Lammens,True,106,31,GK
+1,1903490,32,437299,Leny Yoro,True,74,15,DC
+2,1903490,32,517341,Ayden Heaven,True,106,26,DC
+3,1903490,32,118244,Luke Shaw,True,98,23,DC
+4,1903490,32,386634,Amad Diallo,True,106,16,DMR
+5,1903490,32,353418,Diogo Dalot,True,106,2,DML
+6,1903490,32,88526,Casemiro,True,66,18,MC
+7,1903490,32,123761,Bruno Fernandes,True,106,8,MC
+8,1903490,32,353377,Bryan Mbeumo,True,98,19,AMC
+9,1903490,32,343346,Mason Mount,True,74,7,AMC
+10,1903490,32,362758,Matheus Cunha,True,106,10,FW
+11,1903490,32,340105,Lisandro Martínez,False,32,6,Sub
+12,1903490,32,495260,Patrick Dorgu,False,8,13,Sub
+13,1903490,32,383956,Joshua Zirkzee,False,8,11,Sub
+14,1903490,32,424191,Benjamin Sesko,False,32,30,Sub
+15,1903490,32,460260,Kobbie Mainoo,False,40,37,Sub
+16,1903490,32,345303,Tyrell Malacia,False,0,12,Sub
+17,1903490,32,361707,Altay Bayindir,False,0,1,Sub
+18,1903490,32,408962,Manuel Ugarte,False,0,25,Sub
+19,1903490,32,455860,Tyler Fredricson,False,0,33,Sub
+20,1903490,183,406564,Djordje Petrovic,True,106,1,GK
+21,1903490,183,69877,Adam Smith,True,106,15,DR
+22,1903490,183,328330,Marcos Senesi,True,106,5,DC
+23,1903490,183,366875,Bafodé Diakité,True,106,18,DC
+24,1903490,183,398301,Adrien Truffert,True,106,3,DL
+25,1903490,183,315275,Tyler Adams,True,4,12,DMC
+26,1903490,183,344314,Marcus Tavernier,True,96,16,DMC
+27,1903490,183,497295,Álex Jiménez,True,106,20,AMR
+28,1903490,183,331579,Justin Kluivert,True,96,19,AMC
+29,1903490,183,357073,Antoine Semenyo,True,106,24,AML
+30,1903490,183,384430,Evanilson,True,83,9,FW
+31,1903490,183,479170,Junior Kroupi,False,23,22,Sub
+32,1903490,183,362837,James Hill,False,10,23,Sub
+33,1903490,183,410998,Alex Scott,False,102,8,Sub
+34,1903490,183,295084,David Brooks,False,10,7,Sub
+35,1903490,183,437310,Julio Soler,False,0,6,Sub
+36,1903490,183,371039,Julián Araujo,False,0,2,Sub
+37,1903490,183,389409,Amine Adli,False,0,21,Sub
+38,1903490,183,134695,Enes Ünal,False,0,26,Sub
+39,1903490,183,384131,Will Dennis,False,0,40,Sub

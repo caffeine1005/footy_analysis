@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903213,174,78386,Matz Sels,True,99,26,GK
+1,1903213,174,450289,Nicolò Savona,True,99,37,DR
+2,1903213,174,445424,Murillo,True,99,5,DC
+3,1903213,174,319785,Nikola Milenkovic,True,99,31,DC
+4,1903213,174,386969,Neco Williams,True,99,3,DL
+5,1903213,174,337883,Douglas Luiz,True,13,12,DMC
+6,1903213,174,402596,Elliot Anderson,True,99,8,DMC
+7,1903213,174,398414,Dan Ndoye,True,99,14,AMR
+8,1903213,174,332867,Morgan Gibbs-White,True,99,10,AMC
+9,1903213,174,350088,Callum Hudson-Odoi,True,95,7,AML
+10,1903213,174,397497,Igor Jesus,True,81,19,FW
+11,1903213,174,281049,Taiwo Awoniyi,False,18,9,Sub
+12,1903213,174,342830,Ryan Yates,False,86,22,Sub
+13,1903213,174,328075,Ibrahim Sangaré,False,4,6,Sub
+14,1903213,174,318689,John Victor,False,0,13,Sub
+15,1903213,174,443545,Jair Cunha,False,0,23,Sub
+16,1903213,174,384005,Arnaud Kalimuendo,False,0,15,Sub
+17,1903213,174,425576,James McAtee,False,0,24,Sub
+18,1903213,174,430908,Omari Hutchinson,False,0,21,Sub
+19,1903213,174,376916,Morato,False,0,4,Sub
+20,1903213,32,402184,Senne Lammens,True,99,31,GK
+21,1903213,32,437299,Leny Yoro,True,80,15,DC
+22,1903213,32,320374,Matthijs de Ligt,True,99,4,DC
+23,1903213,32,118244,Luke Shaw,True,99,23,DC
+24,1903213,32,386634,Amad Diallo,True,99,16,DMR
+25,1903213,32,353418,Diogo Dalot,True,71,2,DML
+26,1903213,32,88526,Casemiro,True,99,18,MC
+27,1903213,32,123761,Bruno Fernandes,True,99,8,MC
+28,1903213,32,362758,Matheus Cunha,True,99,10,AMC
+29,1903213,32,353377,Bryan Mbeumo,True,99,19,AMC
+30,1903213,32,424191,Benjamin Sesko,True,99,30,FW
+31,1903213,32,495260,Patrick Dorgu,False,28,13,Sub
+32,1903213,32,349932,Noussair Mazraoui,False,19,3,Sub
+33,1903213,32,383956,Joshua Zirkzee,False,0,11,Sub
+34,1903213,32,361707,Altay Bayindir,False,0,1,Sub
+35,1903213,32,408962,Manuel Ugarte,False,0,25,Sub
+36,1903213,32,460260,Kobbie Mainoo,False,0,37,Sub
+37,1903213,32,343346,Mason Mount,False,0,7,Sub
+38,1903213,32,99487,Harry Maguire,False,0,5,Sub
+39,1903213,32,517341,Ayden Heaven,False,0,26,Sub

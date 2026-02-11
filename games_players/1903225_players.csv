@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903225,30,147863,Guglielmo Vicario,True,99,1,GK
+1,1903225,30,362352,Pedro Porro,True,68,23,DR
+2,1903225,30,323663,Cristian Romero,True,89,17,DC
+3,1903225,30,425229,Micky van de Ven,True,99,37,DC
+4,1903225,30,362219,Djed Spence,True,99,24,DL
+5,1903225,30,322774,João Palhinha,True,80,6,DMC
+6,1903225,30,403859,Pape Matar Sarr,True,99,29,DMC
+7,1903225,30,379688,Brennan Johnson,True,99,22,AMR
+8,1903225,30,399772,Xavi Simons,True,80,7,AMC
+9,1903225,30,317804,Richarlison,True,99,9,AML
+10,1903225,30,333542,Randal Kolo Muani,True,47,39,FW
+11,1903225,30,330816,Kevin Danso,False,10,4,Sub
+12,1903225,30,422885,Mathys Tel,False,19,11,Sub
+13,1903225,30,444751,Wilson Odobert,False,52,28,Sub
+14,1903225,30,401044,Destiny Udogie,False,31,13,Sub
+15,1903225,30,303657,Rodrigo Bentancur,False,19,30,Sub
+16,1903225,30,457006,Antonín Kinsky,False,0,31,Sub
+17,1903225,30,407154,Dane Scarlett,False,0,44,Sub
+18,1903225,30,572661,Yusuf Akhamrich,False,0,70,Sub
+19,1903225,30,572656,James Rowswell,False,0,76,Sub
+20,1903225,32,402184,Senne Lammens,True,99,31,GK
+21,1903225,32,320374,Matthijs de Ligt,True,99,4,DC
+22,1903225,32,99487,Harry Maguire,True,73,5,DC
+23,1903225,32,118244,Luke Shaw,True,99,23,DC
+24,1903225,32,349932,Noussair Mazraoui,True,59,3,DMR
+25,1903225,32,495260,Patrick Dorgu,True,81,13,DML
+26,1903225,32,88526,Casemiro,True,73,18,MC
+27,1903225,32,123761,Bruno Fernandes,True,99,8,MC
+28,1903225,32,353377,Bryan Mbeumo,True,99,19,AMC
+29,1903225,32,386634,Amad Diallo,True,99,16,AMC
+30,1903225,32,362758,Matheus Cunha,True,73,10,FW
+31,1903225,32,437299,Leny Yoro,False,26,15,Sub
+32,1903225,32,353418,Diogo Dalot,False,18,2,Sub
+33,1903225,32,424191,Benjamin Sesko,False,40,30,Sub
+34,1903225,32,408962,Manuel Ugarte,False,26,25,Sub
+35,1903225,32,343346,Mason Mount,False,26,7,Sub
+36,1903225,32,383956,Joshua Zirkzee,False,0,11,Sub
+37,1903225,32,361707,Altay Bayindir,False,0,1,Sub
+38,1903225,32,517341,Ayden Heaven,False,0,26,Sub
+39,1903225,32,533128,Jack Fletcher,False,0,38,Sub

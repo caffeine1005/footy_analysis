@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903240,162,304008,Dean Henderson,True,101,1,GK
+1,1903240,162,401130,Maxence Lacroix,True,101,5,DC
+2,1903240,162,395401,Chris Richards,True,101,26,DC
+3,1903240,162,374631,Marc Guéhi,True,101,6,DC
+4,1903240,162,400496,Daniel Muñoz,True,101,2,DMR
+5,1903240,162,389579,Tyrick Mitchell,True,90,3,DML
+6,1903240,162,344166,Daichi Kamada,True,90,18,MC
+7,1903240,162,430774,Adam Wharton,True,83,20,MC
+8,1903240,162,322670,Ismaïla Sarr,True,37,7,AMC
+9,1903240,162,403865,Yéremy Pino,True,83,10,AMC
+10,1903240,162,328096,Jean-Philippe Mateta,True,101,14,FW
+11,1903240,162,133464,Jefferson Lerma,False,11,8,Sub
+12,1903240,162,531674,Christantus Uche,False,18,12,Sub
+13,1903240,162,345845,Eddie Nketiah,False,64,9,Sub
+14,1903240,162,108638,Will Hughes,False,18,19,Sub
+15,1903240,162,450950,Justin Devenny,False,11,55,Sub
+16,1903240,162,130304,Walter Benítez,False,0,44,Sub
+17,1903240,162,469485,Romain Esse,False,0,21,Sub
+18,1903240,162,69375,Nathaniel Clyne,False,0,17,Sub
+19,1903240,162,531676,Jaydee Canvot,False,0,23,Sub
+20,1903240,32,402184,Senne Lammens,True,101,31,GK
+21,1903240,32,437299,Leny Yoro,True,59,15,DC
+22,1903240,32,320374,Matthijs de Ligt,True,101,4,DC
+23,1903240,32,118244,Luke Shaw,True,87,23,DC
+24,1903240,32,386634,Amad Diallo,True,96,16,DMR
+25,1903240,32,353418,Diogo Dalot,True,101,2,DML
+26,1903240,32,88526,Casemiro,True,101,18,MC
+27,1903240,32,123761,Bruno Fernandes,True,101,8,MC
+28,1903240,32,353377,Bryan Mbeumo,True,96,19,AMC
+29,1903240,32,343346,Mason Mount,True,101,7,AMC
+30,1903240,32,383956,Joshua Zirkzee,True,101,11,FW
+31,1903240,32,340105,Lisandro Martínez,False,14,6,Sub
+32,1903240,32,495260,Patrick Dorgu,False,5,13,Sub
+33,1903240,32,349932,Noussair Mazraoui,False,42,3,Sub
+34,1903240,32,460260,Kobbie Mainoo,False,5,37,Sub
+35,1903240,32,345303,Tyrell Malacia,False,0,12,Sub
+36,1903240,32,361707,Altay Bayindir,False,0,1,Sub
+37,1903240,32,408962,Manuel Ugarte,False,0,25,Sub
+38,1903240,32,517341,Ayden Heaven,False,0,26,Sub
+39,1903240,32,563779,Shea Lacey,False,0,61,Sub

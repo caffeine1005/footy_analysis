@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903204,32,402184,Senne Lammens,True,99,31,GK
+1,1903204,32,437299,Leny Yoro,True,99,15,DC
+2,1903204,32,320374,Matthijs de Ligt,True,99,4,DC
+3,1903204,32,118244,Luke Shaw,True,66,23,DC
+4,1903204,32,386634,Amad Diallo,True,71,16,DMR
+5,1903204,32,353418,Diogo Dalot,True,99,2,DML
+6,1903204,32,88526,Casemiro,True,71,18,MC
+7,1903204,32,123761,Bruno Fernandes,True,99,8,MC
+8,1903204,32,362758,Matheus Cunha,True,83,10,AMC
+9,1903204,32,353377,Bryan Mbeumo,True,99,19,AMC
+10,1903204,32,424191,Benjamin Sesko,True,83,30,FW
+11,1903204,32,495260,Patrick Dorgu,False,28,13,Sub
+12,1903204,32,383956,Joshua Zirkzee,False,16,11,Sub
+13,1903204,32,408962,Manuel Ugarte,False,16,25,Sub
+14,1903204,32,460260,Kobbie Mainoo,False,28,37,Sub
+15,1903204,32,517341,Ayden Heaven,False,33,26,Sub
+16,1903204,32,349932,Noussair Mazraoui,False,0,3,Sub
+17,1903204,32,345303,Tyrell Malacia,False,0,12,Sub
+18,1903204,32,361707,Altay Bayindir,False,0,1,Sub
+19,1903204,32,343346,Mason Mount,False,0,7,Sub
+20,1903204,211,400138,Bart Verbruggen,True,99,1,GK
+21,1903204,211,445059,Mats Wieffer,True,88,27,DR
+22,1903204,211,365402,Jan Paul van Hecke,True,99,6,DC
+23,1903204,211,86441,Lewis Dunk,True,99,5,DC
+24,1903204,211,392647,Maxim De Cuyper,True,60,29,DL
+25,1903204,211,436048,Carlos Baleba,True,60,17,DMC
+26,1903204,211,470690,Yasin Ayari,True,61,26,DMC
+27,1903204,211,321958,Ferdi Kadioglu,True,99,24,AMR
+28,1903204,211,362433,Georginio Rutter,True,80,10,AMC
+29,1903204,211,484175,Yankuba Minteh,True,99,11,AML
+30,1903204,211,39308,Danny Welbeck,True,99,18,FW
+31,1903204,211,519565,Stefanos Tzimas,False,11,9,Sub
+32,1903204,211,533923,Charalampos Kostoulas,False,19,19,Sub
+33,1903204,211,446133,Diego Gómez,False,38,25,Sub
+34,1903204,211,4511,James Milner,False,39,20,Sub
+35,1903204,211,470715,Tom Watson,False,39,14,Sub
+36,1903204,211,260809,Olivier Boscagli,False,0,21,Sub
+37,1903204,211,429683,Diego Coppola,False,0,42,Sub
+38,1903204,211,33532,Jason Steele,False,0,23,Sub
+39,1903204,211,591587,Nehemiah Oriola,False,0,58,Sub

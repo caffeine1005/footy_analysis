@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903146,32,361707,Altay Bayindir,True,110,1,GK
+1,1903146,32,437299,Leny Yoro,True,93,15,DC
+2,1903146,32,320374,Matthijs de Ligt,True,110,4,DC
+3,1903146,32,118244,Luke Shaw,True,110,23,DC
+4,1903146,32,386634,Amad Diallo,True,110,16,DMR
+5,1903146,32,353418,Diogo Dalot,True,110,2,DML
+6,1903146,32,88526,Casemiro,True,80,18,MC
+7,1903146,32,123761,Bruno Fernandes,True,110,8,MC
+8,1903146,32,353377,Bryan Mbeumo,True,110,19,AMC
+9,1903146,32,343346,Mason Mount,True,54,7,AMC
+10,1903146,32,362758,Matheus Cunha,True,30,10,FW
+11,1903146,32,349932,Noussair Mazraoui,False,17,3,Sub
+12,1903146,32,383956,Joshua Zirkzee,False,80,11,Sub
+13,1903146,32,424191,Benjamin Sesko,False,30,30,Sub
+14,1903146,32,460260,Kobbie Mainoo,False,56,37,Sub
+15,1903146,32,260843,André Onana,False,0,24,Sub
+16,1903146,32,495260,Patrick Dorgu,False,0,13,Sub
+17,1903146,32,408962,Manuel Ugarte,False,0,25,Sub
+18,1903146,32,517341,Ayden Heaven,False,0,26,Sub
+19,1903146,32,99487,Harry Maguire,False,0,5,Sub
+20,1903146,184,46092,Martin Dúbravka,True,110,1,GK
+21,1903146,184,69778,Kyle Walker,True,110,2,DR
+22,1903146,184,414233,Maxime Estève,True,110,5,DC
+23,1903146,184,399619,Hjalmar Ekdal,True,91,18,DC
+24,1903146,184,444739,Quilindschy Hartman,True,110,3,DL
+25,1903146,184,404616,Lesley Ugochukwu,True,84,8,DMC
+26,1903146,184,273292,Josh Cullen,True,110,24,DMC
+27,1903146,184,307202,Jacob Bruun Larsen,True,90,7,AMR
+28,1903146,184,416207,Hannibal Mejbri,True,73,28,AMC
+29,1903146,184,400610,Jaidon Anthony,True,110,11,AML
+30,1903146,184,371447,Lyle Foster,True,110,9,FW
+31,1903146,184,425118,Loum Tchaouna,False,37,17,Sub
+32,1903146,184,444334,Oliver Sonne,False,20,22,Sub
+33,1903146,184,315714,Joe Worrall,False,19,4,Sub
+34,1903146,184,142676,Josh Laurent,False,26,29,Sub
+35,1903146,184,436501,Lucas Pires,False,0,23,Sub
+36,1903146,184,426859,Max Weiss,False,0,13,Sub
+37,1903146,184,361694,Zian Flemming,False,0,19,Sub
+38,1903146,184,423732,Aaron Ramsey,False,0,21,Sub
+39,1903146,184,279177,Marcus Edwards,False,0,10,Sub

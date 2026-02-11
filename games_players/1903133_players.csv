@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903133,170,92173,Bernd Leno,True,98,1,GK
+1,1903133,170,145996,Kenny Tete,True,98,2,DR
+2,1903133,170,231135,Joachim Andersen,True,98,5,DC
+3,1903133,170,396976,Calvin Bassey,True,98,3,DC
+4,1903133,170,322611,Ryan Sessegnon,True,64,30,DL
+5,1903133,170,321020,Sander Berge,True,98,16,DMC
+6,1903133,170,297395,Sasa Lukic,True,98,20,DMC
+7,1903133,170,141169,Timothy Castagne,True,64,21,AMR
+8,1903133,170,515865,Josh King,True,73,24,AMC
+9,1903133,170,136824,Alex Iwobi,True,98,17,AML
+10,1903133,170,403649,Rodrigo Muniz,True,73,9,FW
+11,1903133,170,108186,Raúl Jiménez,False,25,7,Sub
+12,1903133,170,306581,Antonee Robinson,False,34,33,Sub
+13,1903133,170,363686,Emile Smith Rowe,False,25,32,Sub
+14,1903133,170,333044,Harry Wilson,False,34,8,Sub
+15,1903133,170,89928,Benjamin Lecomte,False,0,23,Sub
+16,1903133,170,333182,Jorge Cuenca,False,0,15,Sub
+17,1903133,170,140088,Adama Traoré,False,0,11,Sub
+18,1903133,170,135724,Harrison Reed,False,0,6,Sub
+19,1903133,170,79583,Tom Cairney,False,0,10,Sub
+20,1903133,32,361707,Altay Bayindir,True,98,1,GK
+21,1903133,32,437299,Leny Yoro,True,89,15,DC
+22,1903133,32,320374,Matthijs de Ligt,True,98,4,DC
+23,1903133,32,118244,Luke Shaw,True,89,23,DC
+24,1903133,32,386634,Amad Diallo,True,54,16,DMR
+25,1903133,32,495260,Patrick Dorgu,True,98,13,DML
+26,1903133,32,88526,Casemiro,True,55,18,MC
+27,1903133,32,123761,Bruno Fernandes,True,98,8,MC
+28,1903133,32,353377,Bryan Mbeumo,True,98,19,AMC
+29,1903133,32,343346,Mason Mount,True,71,7,AMC
+30,1903133,32,362758,Matheus Cunha,True,98,10,FW
+31,1903133,32,353418,Diogo Dalot,False,44,2,Sub
+32,1903133,32,424191,Benjamin Sesko,False,43,30,Sub
+33,1903133,32,408962,Manuel Ugarte,False,27,25,Sub
+34,1903133,32,517341,Ayden Heaven,False,9,26,Sub
+35,1903133,32,99487,Harry Maguire,False,9,5,Sub
+36,1903133,32,260843,André Onana,False,0,24,Sub
+37,1903133,32,383956,Joshua Zirkzee,False,0,11,Sub
+38,1903133,32,455860,Tyler Fredricson,False,0,33,Sub
+39,1903133,32,460260,Kobbie Mainoo,False,0,37,Sub

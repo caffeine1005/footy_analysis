@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903177,189,322176,Caoimhín Kelleher,True,103,1,GK
+1,1903177,189,470031,Michael Kayode,True,103,33,DR
+2,1903177,189,372724,Nathan Collins,True,103,22,DC
+3,1903177,189,351705,Sepp van den Berg,True,103,4,DC
+4,1903177,189,402367,Aaron Hickey,True,79,2,DL
+5,1903177,189,68659,Jordan Henderson,True,85,6,DMC
+6,1903177,189,444304,Yehor Yarmoliuk,True,103,18,DMC
+7,1903177,189,422183,Dango Ouattara,True,79,19,AMR
+8,1903177,189,401168,Mikkel Damsgaard,True,85,24,AMC
+9,1903177,189,407260,Kevin Schade,True,103,7,AML
+10,1903177,189,443784,Igor Thiago,True,94,9,FW
+11,1903177,189,339674,Mathias Jensen,False,9,8,Sub
+12,1903177,189,298689,Vitaly Janelt,False,18,27,Sub
+13,1903177,189,404109,Frank Onyeka,False,18,15,Sub
+14,1903177,189,229562,Rico Henry,False,24,3,Sub
+15,1903177,189,368512,Keane Lewis-Potter,False,24,23,Sub
+16,1903177,189,412313,Hákon Valdimarsson,False,0,12,Sub
+17,1903177,189,342499,Ethan Pinnock,False,0,5,Sub
+18,1903177,189,422921,Antoni Milambo,False,0,17,Sub
+19,1903177,189,321085,Kristoffer Ajer,False,0,20,Sub
+20,1903177,32,361707,Altay Bayindir,True,103,1,GK
+21,1903177,32,320374,Matthijs de Ligt,True,103,4,DC
+22,1903177,32,99487,Harry Maguire,True,70,5,DC
+23,1903177,32,118244,Luke Shaw,True,85,23,DC
+24,1903177,32,353418,Diogo Dalot,True,103,2,DMR
+25,1903177,32,495260,Patrick Dorgu,True,89,13,DML
+26,1903177,32,123761,Bruno Fernandes,True,103,8,MC
+27,1903177,32,408962,Manuel Ugarte,True,70,25,MC
+28,1903177,32,362758,Matheus Cunha,True,103,10,AMC
+29,1903177,32,353377,Bryan Mbeumo,True,103,19,AMC
+30,1903177,32,424191,Benjamin Sesko,True,103,30,FW
+31,1903177,32,437299,Leny Yoro,False,33,15,Sub
+32,1903177,32,383956,Joshua Zirkzee,False,14,11,Sub
+33,1903177,32,343346,Mason Mount,False,18,7,Sub
+34,1903177,32,460260,Kobbie Mainoo,False,33,37,Sub
+35,1903177,32,402184,Senne Lammens,False,0,31,Sub
+36,1903177,32,533375,Diego León,False,0,35,Sub
+37,1903177,32,17708,Tom Heaton,False,0,22,Sub
+38,1903177,32,455860,Tyler Fredricson,False,0,33,Sub
+39,1903177,32,517341,Ayden Heaven,False,0,26,Sub

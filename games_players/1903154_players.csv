@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903154,167,262515,Gianluigi Donnarumma,True,96,25,GK
+1,1903154,167,493206,Abdukodir Khusanov,True,96,45,DR
+2,1903154,167,402664,Josko Gvardiol,True,96,24,DC
+3,1903154,167,313171,Rúben Dias,True,96,3,DC
+4,1903154,167,468847,Nico O'Reilly,True,96,33,DL
+5,1903154,167,303139,Rodri,True,77,16,DMC
+6,1903154,167,136741,Bernardo Silva,True,89,20,MR
+7,1903154,167,343382,Tijjani Reijnders,True,96,4,MC
+8,1903154,167,331254,Phil Foden,True,96,47,MC
+9,1903154,167,388098,Jérémy Doku,True,78,11,ML
+10,1903154,167,315227,Erling Haaland,True,88,9,FW
+11,1903154,167,397821,Savinho,False,18,26,Sub
+12,1903154,167,122945,Nathan Aké,False,7,6,Sub
+13,1903154,167,430709,Oscar Bobb,False,8,52,Sub
+14,1903154,167,422939,Nico González,False,19,14,Sub
+15,1903154,167,394933,Matheus Nunes,False,0,27,Sub
+16,1903154,167,444791,Rico Lewis,False,0,82,Sub
+17,1903154,167,404852,James Trafford,False,0,1,Sub
+18,1903154,167,534073,Stephen Mfuni,False,0,91,Sub
+19,1903154,167,576821,Divine Mukasa,False,0,63,Sub
+20,1903154,32,361707,Altay Bayindir,True,96,1,GK
+21,1903154,32,437299,Leny Yoro,True,63,15,DC
+22,1903154,32,320374,Matthijs de Ligt,True,96,4,DC
+23,1903154,32,118244,Luke Shaw,True,96,23,DC
+24,1903154,32,349932,Noussair Mazraoui,True,63,3,DMR
+25,1903154,32,495260,Patrick Dorgu,True,96,13,DML
+26,1903154,32,123761,Bruno Fernandes,True,96,8,MC
+27,1903154,32,408962,Manuel Ugarte,True,81,25,MC
+28,1903154,32,353377,Bryan Mbeumo,True,96,19,AMC
+29,1903154,32,386634,Amad Diallo,True,96,16,AMC
+30,1903154,32,424191,Benjamin Sesko,True,81,30,FW
+31,1903154,32,88526,Casemiro,False,15,18,Sub
+32,1903154,32,383956,Joshua Zirkzee,False,15,11,Sub
+33,1903154,32,460260,Kobbie Mainoo,False,33,37,Sub
+34,1903154,32,99487,Harry Maguire,False,33,5,Sub
+35,1903154,32,402184,Senne Lammens,False,0,31,Sub
+36,1903154,32,533375,Diego León,False,0,35,Sub
+37,1903154,32,455860,Tyler Fredricson,False,0,33,Sub
+38,1903154,32,17708,Tom Heaton,False,0,22,Sub
+39,1903154,32,517341,Ayden Heaven,False,0,26,Sub

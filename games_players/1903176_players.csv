@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903176,32,402184,Senne Lammens,True,102,31,GK
+1,1903176,32,437299,Leny Yoro,True,91,15,DC
+2,1903176,32,320374,Matthijs de Ligt,True,102,4,DC
+3,1903176,32,118244,Luke Shaw,True,102,23,DC
+4,1903176,32,386634,Amad Diallo,True,102,16,DMR
+5,1903176,32,353418,Diogo Dalot,True,70,2,DML
+6,1903176,32,88526,Casemiro,True,91,18,MC
+7,1903176,32,123761,Bruno Fernandes,True,102,8,MC
+8,1903176,32,353377,Bryan Mbeumo,True,83,19,AMC
+9,1903176,32,343346,Mason Mount,True,71,7,AMC
+10,1903176,32,424191,Benjamin Sesko,True,102,30,FW
+11,1903176,32,362758,Matheus Cunha,False,31,10,Sub
+12,1903176,32,495260,Patrick Dorgu,False,32,13,Sub
+13,1903176,32,408962,Manuel Ugarte,False,11,25,Sub
+14,1903176,32,460260,Kobbie Mainoo,False,19,37,Sub
+15,1903176,32,99487,Harry Maguire,False,11,5,Sub
+16,1903176,32,383956,Joshua Zirkzee,False,0,11,Sub
+17,1903176,32,533375,Diego León,False,0,35,Sub
+18,1903176,32,361707,Altay Bayindir,False,0,1,Sub
+19,1903176,32,517341,Ayden Heaven,False,0,26,Sub
+20,1903176,16,422814,Robin Roefs,True,102,22,GK
+21,1903176,16,424514,Trai Hume,True,85,32,DR
+22,1903176,16,299077,Nordi Mukiele,True,102,20,DC
+23,1903176,16,344639,Omar Alderete,True,102,15,DC
+24,1903176,16,122980,Arthur Masuaku,True,64,26,DL
+25,1903176,16,437449,Noah Sadiki,True,102,27,DMC
+26,1903176,16,89401,Granit Xhaka,True,102,34,DMC
+27,1903176,16,109807,Bertrand Traoré,True,64,25,AMR
+28,1903176,16,398393,Enzo Le Fée,True,102,28,AMC
+29,1903176,16,443004,Simon Adingra,True,36,24,AML
+30,1903176,16,363535,Wilson Isidor,True,65,18,FW
+31,1903176,16,476110,Chemsdine Talbi,False,38,7,Sub
+32,1903176,16,345441,Lutsharel Geertruida,False,17,6,Sub
+33,1903176,16,404568,Brian Brobbey,False,37,9,Sub
+34,1903176,16,494670,Eliezer Mayenda,False,38,12,Sub
+35,1903176,16,371761,Dan Ballard,False,66,5,Sub
+36,1903176,16,134373,Luke O'Nien,False,0,13,Sub
+37,1903176,16,382438,Anthony Patterson,False,0,1,Sub
+38,1903176,16,399427,Dan Neil,False,0,4,Sub
+39,1903176,16,469645,Chris Rigg,False,0,11,Sub

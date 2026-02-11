@@ -1,0 +1,41 @@
+,game_id,team_id,player_id,player_name,is_starter,minutes_played,jersey_number,starting_position
+0,1903483,161,105603,Sam Johnstone,True,101,31,GK
+1,1903483,161,425060,Yerson Mosquera,True,101,15,DC
+2,1903483,161,431283,Toti Gomes,True,72,24,DC
+3,1903483,161,402810,Emmanuel Agbadou,True,101,12,DC
+4,1903483,161,368547,Ki-Jana Hoever,True,88,26,DMR
+5,1903483,161,415341,David Møller Wolfe,True,101,6,DML
+6,1903483,161,397585,André,True,101,7,MC
+7,1903483,161,404245,Ladislav Krejcí,True,101,37,MC
+8,1903483,161,424039,Jhon Arias,True,72,10,AMC
+9,1903483,161,320242,Jean-Ricner Bellegarde,True,56,27,AMC
+10,1903483,161,333048,Jørgen Strand Larsen,True,71,9,FW
+11,1903483,161,408580,Jackson Tchatchoua,False,13,38,Sub
+12,1903483,161,402056,Tolu Arokodare,False,30,14,Sub
+13,1903483,161,409730,Hugo Bueno,False,29,3,Sub
+14,1903483,161,544982,Fer López,False,45,28,Sub
+15,1903483,161,554310,Mateus Mané,False,29,36,Sub
+16,1903483,161,122714,José Sá,False,0,1,Sub
+17,1903483,161,444241,Santiago Bueno,False,0,4,Sub
+18,1903483,161,437381,Tawanda Chirewa,False,0,23,Sub
+19,1903483,161,262854,Hwang Hee-Chan,False,0,11,Sub
+20,1903483,32,402184,Senne Lammens,True,101,31,GK
+21,1903483,32,349932,Noussair Mazraoui,True,71,3,DC
+22,1903483,32,118244,Luke Shaw,True,101,23,DC
+23,1903483,32,517341,Ayden Heaven,True,71,26,DC
+24,1903483,32,386634,Amad Diallo,True,101,16,DMR
+25,1903483,32,353418,Diogo Dalot,True,86,2,DML
+26,1903483,32,88526,Casemiro,True,80,18,MC
+27,1903483,32,123761,Bruno Fernandes,True,101,8,MC
+28,1903483,32,353377,Bryan Mbeumo,True,101,19,AMC
+29,1903483,32,343346,Mason Mount,True,87,7,AMC
+30,1903483,32,362758,Matheus Cunha,True,101,10,FW
+31,1903483,32,340105,Lisandro Martínez,False,30,6,Sub
+32,1903483,32,495260,Patrick Dorgu,False,15,13,Sub
+33,1903483,32,437299,Leny Yoro,False,30,15,Sub
+34,1903483,32,383956,Joshua Zirkzee,False,14,11,Sub
+35,1903483,32,460260,Kobbie Mainoo,False,21,37,Sub
+36,1903483,32,345303,Tyrell Malacia,False,0,12,Sub
+37,1903483,32,361707,Altay Bayindir,False,0,1,Sub
+38,1903483,32,408962,Manuel Ugarte,False,0,25,Sub
+39,1903483,32,563779,Shea Lacey,False,0,61,Sub
