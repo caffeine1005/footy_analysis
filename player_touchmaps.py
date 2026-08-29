@@ -96,7 +96,18 @@ def load_season_events(save_dir: str | Path = "utd_games") -> pd.DataFrame:
     paths = sorted(glob.glob(str(Path(save_dir) / "*.csv")))
     if not paths:
         raise FileNotFoundError(f"no game csvs found in {save_dir}")
-    return pd.concat((pd.read_csv(p) for p in paths), ignore_index=True)
+    frames = []
+    for p in paths:
+        try:
+            df = pd.read_csv(p)
+        except pd.errors.EmptyDataError:
+            continue
+        if df.empty:
+            continue
+        frames.append(df)
+    if not frames:
+        raise FileNotFoundError(f"no readable game csvs found in {save_dir}")
+    return pd.concat(frames, ignore_index=True)
 
 
 def player_events(
