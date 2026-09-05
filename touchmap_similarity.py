@@ -35,6 +35,15 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import euclidean_distances
 
+from player_action_maps import (
+    DEFENSIVE_TYPES,
+    PASS_TYPES,
+    TAKEON_TYPES,
+    _defensive_outcomes,
+    _pass_outcomes,
+    _shot_outcomes,
+    _takeon_outcomes,
+)
 from player_touchmaps import _slug, load_season_events
 
 DEFAULT_BINS = (12, 8)  # (x_bins, y_bins) across the opta 0-100 pitch
@@ -139,6 +148,170 @@ def build_touch_grids(
 
     meta = pd.DataFrame(rows).reset_index(drop=True)
     X = np.vstack(vectors)
+    return meta, X
+
+
+def _bin_vectors(
+    events: pd.DataFrame,
+    group_cols: list[str],
+    bins: tuple[int, int],
+    smooth_sigma: float,
+    pitch: Pitch,
+) -> dict[tuple, np.ndarray]:
+    """Same smoothed, L1-normalized spatial histogram as `build_touch_grids`, keyed by group."""
+    vectors = {}
+    for key, g in events.groupby(group_cols):
+        bin_stat = pitch.bin_statistic(g["x"], g["y"], statistic="count", bins=bins)
+        grid = gaussian_filter(bin_stat["statistic"], smooth_sigma)
+        total = grid.sum()
+        if total <= 0:
+            continue
+        vectors[key] = (grid / total).ravel()
+    return vectors
+
+
+ACTION_TYPE_SPECS = {
+    "pass": {"types": PASS_TYPES},
+    "takeon": {"types": TAKEON_TYPES},
+    "shot": {"is_shot": True},
+    "defensive": {"types": DEFENSIVE_TYPES},
+}
+
+
+def build_action_grids(
+    season_df: pd.DataFrame,
+    meta: pd.DataFrame,
+    bins: tuple[int, int] = DEFAULT_BINS,
+    smooth_sigma: float = 1.0,
+) -> dict[str, np.ndarray]:
+    """Pass / take-on / shot / defensive-action shape vectors, row-aligned with `meta`.
+
+    `meta` is the touch-based population from `build_touch_grids` (i.e. the
+    min-touches-filtered player list clustering is actually run on). A
+    player with no events of a given type (a keeper's take-ons, a
+    center-back's shots) gets an all-zero vector for that block instead of
+    being dropped — it contributes no signal to that block rather than
+    excluding the player from the clustering population.
+    """
+    has_league = "league" in meta.columns
+    group_cols = ["player", "team", "league"] if has_league else ["player", "team"]
+    pitch = Pitch(pitch_type="opta")
+    zero = np.zeros(bins[0] * bins[1])
+
+    blocks: dict[str, np.ndarray] = {}
+    for name, spec in ACTION_TYPE_SPECS.items():
+        if spec.get("is_shot"):
+            events = season_df[season_df["is_shot"] == True]  # noqa: E712
+        else:
+            events = season_df[
+                season_df["type"].isin(spec["types"]) & season_df["player"].notna()
+            ]
+        vectors = _bin_vectors(events, group_cols, bins, smooth_sigma, pitch)
+        blocks[name] = np.vstack(
+            [vectors.get(tuple(row[c] for c in group_cols), zero) for _, row in meta.iterrows()]
+        )
+    return blocks
+
+
+# Outcome buckets per action type, in a fixed order matching each helper's
+# return tuple in `player_action_maps.py` (which in turn matches that type's
+# map coloring: pass_map's green/red/red-X, takeon_map's and
+# defensive_action_map's green/red, shot_map's gold-star/teal/red/grey).
+ACTION_OUTCOME_LABELS = {
+    "pass": ("completed", "incomplete", "blocked"),
+    "takeon": ("won", "lost"),
+    "shot": ("goal", "ontarget", "offtarget", "blocked"),
+    "defensive": ("won", "lost"),
+}
+
+
+def _outcome_event_sets(season_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """Split each action type's events into its map's outcome buckets, keyed `"{type}_{outcome}"`.
+
+    E.g. `"pass_completed"`, `"pass_incomplete"`, `"pass_blocked"`,
+    `"shot_goal"`, ... — the same win/loss/goal information
+    `player_action_maps.py` conveys through marker color.
+    """
+    passes = season_df[season_df["type"].isin(PASS_TYPES) & season_df["player"].notna()]
+    takeons = season_df[season_df["type"].isin(TAKEON_TYPES) & season_df["player"].notna()]
+    shots = season_df[season_df["is_shot"] == True]  # noqa: E712
+    defensive = season_df[season_df["type"].isin(DEFENSIVE_TYPES) & season_df["player"].notna()]
+
+    splits = {
+        "pass": _pass_outcomes(passes),
+        "takeon": _takeon_outcomes(takeons),
+        "shot": _shot_outcomes(shots),
+        "defensive": _defensive_outcomes(defensive),
+    }
+    return {
+        f"{action}_{label}": subset
+        for action, subsets in splits.items()
+        for label, subset in zip(ACTION_OUTCOME_LABELS[action], subsets)
+    }
+
+
+def build_outcome_grids(
+    season_df: pd.DataFrame,
+    meta: pd.DataFrame,
+    bins: tuple[int, int] = DEFAULT_BINS,
+    smooth_sigma: float = 1.0,
+) -> dict[str, np.ndarray]:
+    """Outcome-split shape vectors (pass completed/incomplete/blocked, take-on
+    won/lost, shot goal/on-target/off-target/blocked, defensive won/lost),
+    row-aligned with `meta`.
+
+    Where `build_action_grids` gives one shape per action type regardless of
+    how it turned out, this splits each type the way its map colors it —
+    the same success/fail/goal information a rendered map conveys visually
+    through marker color, fed in here as numeric histograms instead of
+    pixels. A player with no events in a given outcome bucket (e.g. never
+    had a pass blocked) gets an all-zero vector for that block, same
+    convention as `build_action_grids`.
+    """
+    has_league = "league" in meta.columns
+    group_cols = ["player", "team", "league"] if has_league else ["player", "team"]
+    pitch = Pitch(pitch_type="opta")
+    zero = np.zeros(bins[0] * bins[1])
+
+    blocks: dict[str, np.ndarray] = {}
+    for name, events in _outcome_event_sets(season_df).items():
+        vectors = _bin_vectors(events, group_cols, bins, smooth_sigma, pitch)
+        blocks[name] = np.vstack(
+            [vectors.get(tuple(row[c] for c in group_cols), zero) for _, row in meta.iterrows()]
+        )
+    return blocks
+
+
+def build_combined_grids(
+    season_df: pd.DataFrame,
+    min_touches: int = DEFAULT_MIN_TOUCHES,
+    bins: tuple[int, int] = DEFAULT_BINS,
+    smooth_sigma: float = 1.0,
+    include_outcomes: bool = True,
+) -> tuple[pd.DataFrame, np.ndarray]:
+    """Touch shape + pass/take-on/shot/defensive-action shapes, concatenated per player.
+
+    Extends `build_touch_grids`'s "where do they operate" signal with "what
+    do they do there": one more smoothed, L1-normalized histogram block per
+    action type (`build_action_grids`), all on the same min-touches-filtered
+    population. With `include_outcomes` (default), also appends one block
+    per outcome bucket within each type (`build_outcome_grids` — e.g.
+    completed vs incomplete vs blocked passes), so the vector captures not
+    just where a player passes/dribbles/shoots/defends but whether it works
+    there — the same success/fail coloring the action maps render visually.
+    All blocks share the same pitch grid, so directly comparable.
+    `cluster_players` then groups players by positional *and* behavioral
+    shape instead of touch location alone.
+    """
+    meta, X_touch = build_touch_grids(
+        season_df, min_touches=min_touches, bins=bins, smooth_sigma=smooth_sigma
+    )
+    action_blocks = build_action_grids(season_df, meta, bins=bins, smooth_sigma=smooth_sigma)
+    blocks = [X_touch, *(action_blocks[name] for name in ACTION_TYPE_SPECS)]
+    if include_outcomes:
+        outcome_blocks = build_outcome_grids(season_df, meta, bins=bins, smooth_sigma=smooth_sigma)
+        blocks.extend(outcome_blocks[name] for name in outcome_blocks)
+    X = np.hstack(blocks)
     return meta, X
 
 

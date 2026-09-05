@@ -145,11 +145,20 @@ def load_players(path: Path | str = DATA_PATH) -> pl.DataFrame:
         )
     )
     players = players.with_columns(
-        [(pl.col(c) / pl.col(MINUTES_COL)).alias(c) for c in count_cols]
+        [
+            pl.when(pl.col(MINUTES_COL) > 0)
+            .then(pl.col(c) / pl.col(MINUTES_COL))
+            .otherwise(0.0)
+            .alias(c)
+            for c in count_cols
+        ]
     )
     players = players.with_columns(
         [
-            pl.when(pl.col(c).is_nan()).then(None).otherwise(pl.col(c)).alias(c)
+            pl.when(pl.col(c).is_nan() | pl.col(c).is_infinite())
+            .then(None)
+            .otherwise(pl.col(c))
+            .alias(c)
             for c in numeric_cols
             if c != MINUTES_COL
         ]
