@@ -1,0 +1,13 @@
+# Dependencies for footy_desktop_app.py (the Qt desktop UI).
+# Install with: pip install -r requirements-desktop.txt
+PySide6==6.11.2
+matplotlib==3.11.0
+numpy==1.26.4
+pandas==2.3.3
+polars==1.41.2
+scipy==1.17.1
+scikit-learn==1.9.0
+mplsoccer==1.6.1
+pyfonts==1.4.0
+soccerdata==1.9.0
+lxml==4.9.4
