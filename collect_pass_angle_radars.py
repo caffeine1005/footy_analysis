@@ -1,17 +1,21 @@
-"""Batch job: full-pitch touch maps for every remaining top league.
+"""Batch job: pass-angle radar for every player, every collected league.
 
-Same as `touch_maps.py` (which already covered ENG-Premier League), but
-looped over the rest of the "big 5" plus Eredivisie and Liga Portugal.
-Each league is fully independent and skip-if-exists at both the event-scrape
-and rendered-image layer, so this is safe to interrupt/resume, and a
+Same layout as the other map trees (`touch_maps/`, `pass_maps/`, ...):
+
+    pass_angle_radars/{league}_{season}/{team}/{player}_pass_angle_radar.png
+
+Reuses the WhoScored event csvs already cached under `league_games/` —
+doesn't scrape anything, so each league must already be collected there.
+
+Safe to interrupt and resume: rendered images are skip-if-exists, and a
 failure in one league doesn't block the others.
 
 Run directly:
 
-    python collect_more_touchmaps.py
-    python collect_more_touchmaps.py "Joshua Kimmich"
-    python collect_more_touchmaps.py "Joshua Kimmich" --season 2025 --league "GER-Bundesliga"
-    python collect_more_touchmaps.py --season 2024 --league "FRA-Ligue 1"
+    python collect_pass_angle_radars.py
+    python collect_pass_angle_radars.py "Bruno Fernandes"
+    python collect_pass_angle_radars.py "Bruno Fernandes" --season 2025 --team "Man Utd"
+    python collect_pass_angle_radars.py --season 2025 --league "ENG-Premier League"
 """
 
 from __future__ import annotations
@@ -19,16 +23,9 @@ from __future__ import annotations
 import argparse
 import sys
 
-from player_touchmaps import build_league_touch_maps, find_player_in_leagues
+from pass_angle_radar import DEFAULT_MIN_PASSES, build_league_pass_angle_radars
+from player_touchmaps import find_player_in_leagues
 from touchmap_similarity import DEFAULT_LEAGUES, DEFAULT_SEASON
-
-# Default batch set: leagues not already covered by touch_maps.py (Prem).
-LEAGUES = [
-    "GER-Bundesliga",
-    "FRA-Ligue 1",
-    "NED-Eredivisie",
-    "POR-Liga Portugal",
-]
 
 
 def _load_font():
@@ -46,7 +43,7 @@ def _load_font():
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Build full-pitch touch maps (scrape/reuse league events, then render). "
+            "Build pass-angle radars from cached league events. "
             "Optionally restrict to one player and/or season."
         )
     )
@@ -54,7 +51,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "player",
         nargs="?",
         default=None,
-        help="Exact or unique player name — only build a map for that player",
+        help="Exact or unique player name — only build a radar for that player",
     )
     parser.add_argument(
         "--team",
@@ -71,10 +68,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--league",
         default=None,
         help=(
-            "Restrict to one league (e.g. 'GER-Bundesliga'). "
-            "Default batch: remaining top leagues; with --player, searches all "
-            "collected leagues unless --league is set."
+            "Restrict to one league (e.g. 'ENG-Premier League'). "
+            "Default: all collected leagues, or the league where --player is found."
         ),
+    )
+    parser.add_argument(
+        "--min-passes",
+        type=int,
+        default=DEFAULT_MIN_PASSES,
+        help=f"Skip players with fewer directed passes (default: {DEFAULT_MIN_PASSES})",
     )
     return parser.parse_args(argv)
 
@@ -94,41 +96,30 @@ def main(argv: list[str] | None = None) -> int:
                 player, season=season, leagues=search_leagues, team=team
             )
         except ValueError as e:
-            # No cached hit — if a league was given, scrape/build that league for the query.
-            if args.league is None:
-                print(f"!! {e}", flush=True)
-                print(
-                    "Tip: pass --league to scrape/build that league for this player.",
-                    flush=True,
-                )
-                return 1
-            league = args.league
-            print(
-                f"no cached match; building {league} {season} for query {player!r}",
-                flush=True,
-            )
-        else:
-            print(f"resolved player: {player} ({team}) in {league} {season}", flush=True)
+            print(f"!! {e}", flush=True)
+            return 1
         leagues = [league]
+        print(f"resolved player: {player} ({team}) in {league} {season}", flush=True)
     else:
-        leagues = [args.league] if args.league else list(LEAGUES)
+        leagues = [args.league] if args.league else list(DEFAULT_LEAGUES)
 
     for league in leagues:
         print(f"\n===== {league} {season} =====", flush=True)
         try:
-            result = build_league_touch_maps(
+            summary = build_league_pass_angle_radars(
                 league=league,
                 season=season,
                 font=font,
+                min_passes=args.min_passes,
                 player=player,
                 team=team,
             )
         except Exception as e:  # noqa: BLE001
             print(f"!! {league} failed: {e}", flush=True)
             continue
-        n_ok = result["touch_map_saved"].sum()
-        print(f"{league} done: {n_ok}/{len(result)} players have a touch map saved", flush=True)
-        errors = result[result["error"].notna()]
+        n_ok = int(summary["saved"].sum())
+        print(f"{league} pass_angle: {n_ok}/{len(summary)} players saved", flush=True)
+        errors = summary[summary["error"].notna()]
         if not errors.empty:
             print(errors, flush=True)
     return 0

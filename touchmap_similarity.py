@@ -35,6 +35,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import euclidean_distances
 
+from name_utils import normalize_name, normalize_series
 from player_action_maps import (
     DEFENSIVE_TYPES,
     PASS_TYPES,
@@ -363,11 +364,23 @@ def resolve_player(
     league: str | None = None,
 ) -> int:
     """Case-insensitive partial-match lookup, mirroring touch_maps.player_events."""
-    matched = meta[meta["player"].str.contains(player_name, case=False, na=False, regex=False)]
+    matched = meta[
+        normalize_series(meta["player"]).str.contains(
+            normalize_name(player_name), regex=False
+        )
+    ]
     if team is not None:
-        matched = matched[matched["team"].str.contains(team, case=False, na=False, regex=False)]
+        matched = matched[
+            normalize_series(matched["team"]).str.contains(
+                normalize_name(team), regex=False
+            )
+        ]
     if league is not None and "league" in matched.columns:
-        matched = matched[matched["league"].str.contains(league, case=False, na=False, regex=False)]
+        matched = matched[
+            normalize_series(matched["league"]).str.contains(
+                normalize_name(league), regex=False
+            )
+        ]
     if matched.empty:
         raise ValueError(
             f"no player matching {player_name!r} (team={team!r}, league={league!r})"

@@ -32,6 +32,7 @@ import soccerdata as sd
 from mplsoccer import Pitch, VerticalPitch
 from scipy.ndimage import gaussian_filter
 
+from name_utils import normalize_name, normalize_series
 from whoscored_patch import apply_whoscored_json_patch
 
 FINAL_THIRD_X = 200 / 3  # opta x-scale (0-100)
@@ -129,9 +130,13 @@ def player_events(
     if exact:
         matched = df[df["player"] == player_name]
     else:
-        matched = df[df["player"].str.contains(player_name, case=False, na=False, regex=False)]
+        matched = df[
+            normalize_series(df["player"]).str.contains(
+                normalize_name(player_name), regex=False
+            )
+        ]
     if team is not None:
-        matched = matched[matched["team"] == team]
+        matched = matched[normalize_series(matched["team"]) == normalize_name(team)]
     if matched.empty:
         raise ValueError(f"no events found for player matching {player_name!r} (team={team!r})")
     if require_unique:
@@ -143,6 +148,82 @@ def player_events(
                 "Pass a fuller name or `team=` to disambiguate."
             )
     return matched
+
+
+def resolve_player_identity(
+    df: pd.DataFrame,
+    player_name: str,
+    team: str | None = None,
+) -> tuple[str, str]:
+    """Resolve a query to the exact `(player, team)` strings stored in events.
+
+    Prefers a unique case-insensitive exact name match, then falls back to a
+    unique substring match (same rules as `player_events`).
+    """
+    players = df[df["player"].notna()]
+    if team is not None:
+        players = players[normalize_series(players["team"]) == normalize_name(team)]
+    if players.empty:
+        raise ValueError(f"no events found for player matching {player_name!r} (team={team!r})")
+
+    options = players[["player", "team"]].drop_duplicates()
+    exact = options[normalize_series(options["player"]) == normalize_name(player_name)]
+    if len(exact) == 1:
+        row = exact.iloc[0]
+        return str(row["player"]), str(row["team"])
+    if len(exact) > 1:
+        listing = ", ".join(f"{p} ({t})" for p, t in exact.itertuples(index=False))
+        raise ValueError(
+            f"{player_name!r} matches multiple players: {listing}. "
+            "Pass `team=` to disambiguate."
+        )
+
+    events = player_events(df, player_name, team=team, exact=False, require_unique=True)
+    row = events[["player", "team"]].drop_duplicates().iloc[0]
+    return str(row["player"]), str(row["team"])
+
+
+def find_player_in_leagues(
+    player_name: str,
+    season: int | str,
+    leagues: list[str],
+    team: str | None = None,
+    events_root: str | Path = "league_games",
+) -> tuple[str, str, str]:
+    """Locate a unique `(league, player, team)` across cached season directories.
+
+    Skips leagues with no events on disk. Raises if zero or multiple hits.
+    """
+    hits: list[tuple[str, str, str]] = []
+    for league in leagues:
+        events_dir = Path(events_root) / f"{league.replace(' ', '_')}_{season}"
+        if not events_dir.exists():
+            continue
+        try:
+            season_df = load_season_events(events_dir)
+            resolved_player, resolved_team = resolve_player_identity(
+                season_df, player_name, team=team
+            )
+        except ValueError:
+            continue
+        hits.append((league, resolved_player, resolved_team))
+
+    if not hits:
+        raise ValueError(
+            f"no player matching {player_name!r} (team={team!r}) in cached "
+            f"events for season {season} under {events_root}/"
+        )
+    # Same person can appear once per league they played in; treat distinct
+    # (player, team) identities as ambiguous.
+    identities = {(p, t) for _, p, t in hits}
+    if len(identities) > 1:
+        listing = ", ".join(f"{p} ({t}) [{lg}]" for lg, p, t in hits)
+        raise ValueError(
+            f"{player_name!r} matches multiple players: {listing}. "
+            "Pass --team and/or --league to disambiguate."
+        )
+    league, resolved_player, resolved_team = hits[0]
+    return league, resolved_player, resolved_team
 
 
 def final_third_touch_map(
@@ -412,6 +493,8 @@ def generate_all_touch_maps(
     min_touches: int = 10,
     skip_existing: bool = True,
     dpi: int = 150,
+    player: str | None = None,
+    team: str | None = None,
 ) -> pd.DataFrame:
     """Render + save a full-pitch touch map for every player.
 
@@ -420,34 +503,44 @@ def generate_all_touch_maps(
     `skip_existing` resumability, a `summary.csv`), but `full_pitch_touch_map`
     instead of the final-third + average-position pair — saved to
     `{out_dir}/{team}/{player}_touch_map.png`.
+
+    Pass `player=` (and optionally `team=`) to render only that resolved
+    identity; `min_touches` is ignored in that case.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    touches_all = season_df[(season_df["is_touch"] == True) & season_df["player"].notna()]
+    touches_all = season_df[(season_df["is_touch"] == True) & season_df["player"].notna()]  # noqa: E712
     counts = touches_all.groupby(["player", "team"]).size()
-    pairs = sorted(counts[counts >= min_touches].index.tolist())
+    if player is not None:
+        resolved_player, resolved_team = resolve_player_identity(season_df, player, team=team)
+        pairs = [(resolved_player, resolved_team)]
+    else:
+        pairs = sorted(counts[counts >= min_touches].index.tolist())
 
     rows = []
-    for i, (player_name, team) in enumerate(pairs, start=1):
-        player_dir = out_dir / _slug(team)
+    for i, (player_name, player_team) in enumerate(pairs, start=1):
+        player_dir = out_dir / _slug(player_team)
         player_dir.mkdir(parents=True, exist_ok=True)
         path = player_dir / f"{_slug(player_name)}_touch_map.png"
 
+        touch_count = int(counts[(player_name, player_team)]) if (player_name, player_team) in counts.index else 0
         row = {
             "player": player_name,
-            "team": team,
-            "touches": int(counts[(player_name, team)]),
+            "team": player_team,
+            "touches": touch_count,
             "touch_map_saved": False,
             "error": None,
         }
-        print(f"[{i}/{len(pairs)}] {player_name} ({team})", flush=True)
+        print(f"[{i}/{len(pairs)}] {player_name} ({player_team})", flush=True)
 
         if skip_existing and path.exists():
             row["touch_map_saved"] = True
         else:
             try:
-                ax = full_pitch_touch_map(season_df, player_name, team=team, exact=True, font=font)
+                ax = full_pitch_touch_map(
+                    season_df, player_name, team=player_team, exact=True, font=font
+                )
                 ax.figure.savefig(path, dpi=dpi, facecolor=ax.figure.get_facecolor())
                 plt.close(ax.figure)
                 row["touch_map_saved"] = True
@@ -469,11 +562,14 @@ def build_league_touch_maps(
     min_touches: int = 10,
     browser_path: str = "/usr/bin/chromium",
     font=None,
+    player: str | None = None,
+    team: str | None = None,
 ) -> pd.DataFrame:
     """End to end: scrape a full league season, then render every player's full-pitch touch map.
 
     Safe to interrupt and re-run — both the game-event cache and the
-    rendered-image cache are skip-if-exists.
+    rendered-image cache are skip-if-exists. Pass `player=` to render only
+    that one resolved identity.
     """
     league_slug = league.replace(" ", "_")
     if events_dir is None:
@@ -486,7 +582,14 @@ def build_league_touch_maps(
     )
     print(f"collected {len(season_df)} events across {season_df['game_id'].nunique()} games", flush=True)
 
-    return generate_all_touch_maps(season_df, out_dir=maps_dir, font=font, min_touches=min_touches)
+    return generate_all_touch_maps(
+        season_df,
+        out_dir=maps_dir,
+        font=font,
+        min_touches=min_touches,
+        player=player,
+        team=team,
+    )
 
 
 if __name__ == "__main__":

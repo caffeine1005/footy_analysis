@@ -33,6 +33,7 @@ from player_touchmaps import (
     full_pitch_touch_map,
     load_season_events,
     player_events,
+    resolve_player_identity,
 )
 
 SUCCESS_COLOR = "#00D2A0"
@@ -435,6 +436,8 @@ def _generate_all_maps(
     skip_existing: bool = True,
     dpi: int = 150,
     filename_suffix: str = "map",
+    player: str | None = None,
+    team: str | None = None,
 ) -> pd.DataFrame:
     """Render + save `plot_fn`'s map for every (player, team) with >= `min_touches` touches.
 
@@ -443,31 +446,43 @@ def _generate_all_maps(
     `{out_dir}/{team}/{player}_{filename_suffix}.png`. A player with no
     events of this action type (a keeper's shots, a center-back's take-ons)
     is skipped without being treated as an error.
+
+    Pass `player=` (and optionally `team=`) to render only that resolved
+    identity; `min_touches` is ignored in that case.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     touches_all = season_df[(season_df["is_touch"] == True) & season_df["player"].notna()]  # noqa: E712
     counts = touches_all.groupby(["player", "team"]).size()
-    pairs = sorted(counts[counts >= min_touches].index.tolist())
+    if player is not None:
+        resolved_player, resolved_team = resolve_player_identity(season_df, player, team=team)
+        pairs = [(resolved_player, resolved_team)]
+    else:
+        pairs = sorted(counts[counts >= min_touches].index.tolist())
 
     rows = []
-    for i, (player_name, team) in enumerate(pairs, start=1):
-        player_dir = out_dir / _slug(team)
+    for i, (player_name, player_team) in enumerate(pairs, start=1):
+        player_dir = out_dir / _slug(player_team)
         player_dir.mkdir(parents=True, exist_ok=True)
         path = player_dir / f"{_slug(player_name)}_{filename_suffix}.png"
 
+        touch_count = (
+            int(counts[(player_name, player_team)])
+            if (player_name, player_team) in counts.index
+            else 0
+        )
         row = {
-            "player": player_name, "team": team, "touches": int(counts[(player_name, team)]),
+            "player": player_name, "team": player_team, "touches": touch_count,
             "saved": False, "error": None,
         }
-        print(f"[{i}/{len(pairs)}] {filename_suffix}: {player_name} ({team})", flush=True)
+        print(f"[{i}/{len(pairs)}] {filename_suffix}: {player_name} ({player_team})", flush=True)
 
         if skip_existing and path.exists():
             row["saved"] = True
         else:
             try:
-                ax = plot_fn(season_df, player_name, team=team, exact=True, font=font)
+                ax = plot_fn(season_df, player_name, team=player_team, exact=True, font=font)
                 ax.figure.savefig(path, dpi=dpi, facecolor=ax.figure.get_facecolor())
                 plt.close(ax.figure)
                 row["saved"] = True
@@ -486,40 +501,48 @@ def _generate_all_maps(
 def generate_all_pass_maps(
     season_df, out_dir: str | Path = "pass_maps", font=None,
     min_touches: int = 10, skip_existing: bool = True, dpi: int = 150,
+    player: str | None = None, team: str | None = None,
 ) -> pd.DataFrame:
     """Pass map for every player. See `_generate_all_maps`."""
     return _generate_all_maps(
-        season_df, pass_map, out_dir, font, min_touches, skip_existing, dpi, "pass_map"
+        season_df, pass_map, out_dir, font, min_touches, skip_existing, dpi, "pass_map",
+        player=player, team=team,
     )
 
 
 def generate_all_takeon_maps(
     season_df, out_dir: str | Path = "takeon_maps", font=None,
     min_touches: int = 10, skip_existing: bool = True, dpi: int = 150,
+    player: str | None = None, team: str | None = None,
 ) -> pd.DataFrame:
     """Take-on/dribble map for every player. See `_generate_all_maps`."""
     return _generate_all_maps(
-        season_df, takeon_map, out_dir, font, min_touches, skip_existing, dpi, "takeon_map"
+        season_df, takeon_map, out_dir, font, min_touches, skip_existing, dpi, "takeon_map",
+        player=player, team=team,
     )
 
 
 def generate_all_shot_maps(
     season_df, out_dir: str | Path = "shot_maps", font=None,
     min_touches: int = 10, skip_existing: bool = True, dpi: int = 150,
+    player: str | None = None, team: str | None = None,
 ) -> pd.DataFrame:
     """Shot map for every player. See `_generate_all_maps`."""
     return _generate_all_maps(
-        season_df, shot_map, out_dir, font, min_touches, skip_existing, dpi, "shot_map"
+        season_df, shot_map, out_dir, font, min_touches, skip_existing, dpi, "shot_map",
+        player=player, team=team,
     )
 
 
 def generate_all_defensive_maps(
     season_df, out_dir: str | Path = "defensive_maps", font=None,
     min_touches: int = 10, skip_existing: bool = True, dpi: int = 150,
+    player: str | None = None, team: str | None = None,
 ) -> pd.DataFrame:
     """Defensive-action map for every player. See `_generate_all_maps`."""
     return _generate_all_maps(
-        season_df, defensive_action_map, out_dir, font, min_touches, skip_existing, dpi, "defensive_map"
+        season_df, defensive_action_map, out_dir, font, min_touches, skip_existing, dpi,
+        "defensive_map", player=player, team=team,
     )
 
 
@@ -530,6 +553,8 @@ def build_league_action_maps(
     maps_root: str | Path = ".",
     min_touches: int = 10,
     font=None,
+    player: str | None = None,
+    team: str | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Pass/take-on/shot/defensive-action maps for every player in one cached league season.
 
@@ -538,6 +563,8 @@ def build_league_action_maps(
     doesn't scrape anything itself, so the league must already be collected.
     Mirrors `player_touchmaps.build_league_touch_maps`'s directory layout,
     one subtree per action type: `{maps_root}/{pass,takeon,shot,defensive}_maps/{league}_{season}/`.
+
+    Pass `player=` to render only that one resolved identity.
     """
     league_slug = league.replace(" ", "_")
     if events_dir is None:
@@ -558,7 +585,14 @@ def build_league_action_maps(
     summaries = {}
     for name, generate_fn in generators.items():
         out_dir = Path(maps_root) / f"{name}_maps" / f"{league_slug}_{season}"
-        summaries[name] = generate_fn(season_df, out_dir=out_dir, font=font, min_touches=min_touches)
+        summaries[name] = generate_fn(
+            season_df,
+            out_dir=out_dir,
+            font=font,
+            min_touches=min_touches,
+            player=player,
+            team=team,
+        )
     return summaries
 
 

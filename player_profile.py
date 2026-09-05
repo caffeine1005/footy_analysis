@@ -8,6 +8,14 @@ cluster, find the most quantitatively similar players (cosine / PCA-KNN /
 Spearman / role-blocks / NMF, fused with RRF), then profile each match's
 strengths and weaknesses vs the cluster pool.
 
+Pass-angle tendency (`pass_angle_radar`) is fused directly into that
+second stage: each cluster mate's 8-spoke radar (plus concentration, mean
+length, completion, circular mean direction) is median-imputed and
+appended to the FBref feature matrix, so the Cosine / KNN-PCA / Spearman /
+NMF rankers all treat pass direction as real inputs (RoleBlocks stays
+FBref-only). A cosine of those same vectors is still printed next to the
+target and each match as a readout.
+
 CLI:
 
     python player_profile.py "Bruno Fernandes" --team "Man Utd"
@@ -31,8 +39,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import RobustScaler
 
+import pass_angle_radar as par
 import player_action_maps as pam
 import touchmap_similarity as tms
+from name_utils import normalize_name, normalized_col, strip_accents
 from player_similarity import (
     DATA_PATH,
     MINUTES_COL,
@@ -65,7 +75,7 @@ def pretty_stat(col: str) -> str:
 
 
 def _team_tokens(name: str) -> set[str]:
-    return set(re.findall(r"[a-z0-9]+", name.lower()))
+    return set(re.findall(r"[a-z0-9]+", strip_accents(name).lower()))
 
 
 def _teams_overlap(a: str | None, b: str | None) -> bool:
@@ -76,8 +86,8 @@ def _teams_overlap(a: str | None, b: str | None) -> bool:
         return True
     if ta & tb:
         return True
-    a_norm = re.sub(r"[^a-z0-9]", "", a.lower())
-    b_norm = re.sub(r"[^a-z0-9]", "", b.lower())
+    a_norm = re.sub(r"[^a-z0-9]", "", strip_accents(a).lower())
+    b_norm = re.sub(r"[^a-z0-9]", "", strip_accents(b).lower())
     return a_norm in b_norm or b_norm in a_norm
 
 
@@ -89,10 +99,12 @@ def resolve_fbref_row(
 ) -> tuple[dict, pl.DataFrame]:
     """Match a touch-map row to one FBref player (name + optional team/league)."""
     matches = players.with_row_index().filter(
-        pl.col("player").str.contains("(?i)" + player)
+        normalized_col("player").str.contains(normalize_name(player), literal=True)
     )
     if league:
-        matches = matches.filter(pl.col("league").str.contains("(?i)" + league))
+        matches = matches.filter(
+            normalized_col("league").str.contains(normalize_name(league), literal=True)
+        )
     if team and matches.height > 1:
         by_team = matches.filter(
             pl.col("team").map_elements(
@@ -106,7 +118,7 @@ def resolve_fbref_row(
             f"no FBref row for {player!r} (team={team!r}, league={league!r})"
         )
     if matches.height > 1:
-        exact = matches.filter(pl.col("player").str.to_lowercase() == player.lower())
+        exact = matches.filter(normalized_col("player") == normalize_name(player))
         if exact.height == 1:
             matches = exact
     row = matches.row(0, named=True)
@@ -198,6 +210,7 @@ def build_fbref_cluster_pool(
 TARGET_MAP_SPECS = [
     ("touch", pam.full_pitch_touch_map, "touch_map"),
     ("pass", pam.pass_map, "pass_map"),
+    ("pass_angle", par.pass_angle_radar, "pass_angle_radar"),
     ("takeon", pam.takeon_map, "takeon_map"),
     ("shot", pam.shot_map, "shot_map"),
     ("defensive", pam.defensive_action_map, "defensive_map"),
@@ -207,7 +220,7 @@ TARGET_MAP_SPECS = [
 def _save_target_maps(
     season_df: pd.DataFrame, touch_target: dict, out_dir: str | Path, dpi: int = 150
 ) -> dict[str, str]:
-    """Save the target's touch/pass/take-on/shot/defensive-action maps as separate PNGs.
+    """Save the target's touch/pass/angle/take-on/shot/defensive maps as PNGs.
 
     A map type the target has no events for (e.g. a center-back's shot map)
     is skipped rather than failing the others. Returns `{name: saved_path}`.
@@ -252,9 +265,9 @@ def _run_touchmap_cluster(
     pitch position. Pass `action_features=False` to fall back to
     touch-location-only clustering.
 
-    With `save_maps_dir`, also saves the target's touch/pass/take-on/shot/
-    defensive-action maps as separate PNGs in that directory, reusing the
-    same `season_df` already loaded for clustering.
+    With `save_maps_dir`, also saves the target's touch/pass/pass-angle/
+    take-on/shot/defensive-action maps as separate PNGs in that directory,
+    reusing the same `season_df` already loaded for clustering.
     """
     if events_dir is not None:
         season_df = tms.load_season_events(events_dir)
@@ -282,6 +295,15 @@ def _run_touchmap_cluster(
         "touches": int(target_row["touches"]),
         "cluster": cluster_label,
     }
+
+    pairs = list(
+        zip(cluster_mates["player"].tolist(), cluster_mates["team"].tolist())
+    )
+    stats_by, vec_by = par.pass_angle_features_for_players(season_df, pairs)
+    key = (touch_target["player"], touch_target["team"])
+    touch_target["pass_angles"] = stats_by.get(key)
+    touch_target["pass_angle_stats_by_player"] = stats_by
+    touch_target["pass_angle_vec_by_player"] = vec_by
 
     if save_maps_dir is not None:
         touch_target["maps_saved"] = _save_target_maps(season_df, touch_target, save_maps_dir)
@@ -386,6 +408,84 @@ def _pool_target_idx(pool: pl.DataFrame, target_row: dict) -> int:
     return names.index(target_row["player"])
 
 
+def _align_pass_angles_to_pool(
+    pool: pl.DataFrame,
+    cluster_mates: pd.DataFrame,
+    vec_by: dict[tuple[str, str], np.ndarray],
+    stats_by: dict[tuple[str, str], dict],
+) -> tuple[np.ndarray, dict[int, dict]]:
+    """Map WhoScored pass-angle features onto FBref `pool` rows.
+
+    Same name/team/league resolver as `build_fbref_cluster_pool`. Players
+    with no directed-pass vector stay as NaN; `search_in_pool` median-imputes
+    them before fusing the features into the stage-2 matrix.
+    """
+    n_feat = len(par.PASS_ANGLE_FEATURE_NAMES)
+    X = np.full((pool.height, n_feat), np.nan)
+    stats_by_idx: dict[int, dict] = {}
+    if cluster_mates.empty or not (vec_by or stats_by):
+        return X, stats_by_idx
+
+    for row in cluster_mates.itertuples(index=False):
+        key = (row.player, row.team)
+        vec = vec_by.get(key)
+        stats = stats_by.get(key)
+        if vec is None and stats is None:
+            continue
+        league = getattr(row, "league", None)
+        try:
+            fbref_row, _ = resolve_fbref_row(pool, row.player, row.team, league)
+            idx = _pool_target_idx(pool, fbref_row)
+        except ValueError:
+            continue
+        if vec is not None:
+            X[idx] = vec
+        if stats is not None:
+            stats_by_idx[idx] = stats
+    return X, stats_by_idx
+
+
+def _augment_pass_angle_features(
+    pass_angle_X: np.ndarray, idx: int
+) -> np.ndarray | None:
+    """Median-impute the pass-angle matrix so it can be fused into stage-2 inputs.
+
+    Missing rows (players without a directed-pass vector) are filled with
+    each feature's median over the players who do have one, i.e. a neutral
+    value that neither helps nor hurts their similarity. Returns the filled
+    ``(n, k)`` matrix, or ``None`` when the target has no vector or fewer
+    than two players do (nothing to compare against).
+    """
+    valid = np.all(np.isfinite(pass_angle_X), axis=1)
+    if not valid[idx] or int(valid.sum()) < 2:
+        return None
+    filled = pass_angle_X.astype(float, copy=True)
+    for j in range(filled.shape[1]):
+        col = filled[:, j]
+        finite = col[np.isfinite(col)]
+        med = float(np.median(finite)) if finite.size else 0.0
+        col[~np.isfinite(col)] = med
+    return filled
+
+
+def _pass_angle_cosine(pass_angle_X: np.ndarray, idx: int) -> np.ndarray | None:
+    """Cosine of Robust-scaled pass-tendency vectors vs row `idx`, or None.
+
+    Used only for the report readout now that the pass-angle features are
+    fused into the stage-2 feature matrix (see `search_in_pool`).
+    """
+    valid = np.all(np.isfinite(pass_angle_X), axis=1)
+    if not valid[idx] or int(valid.sum()) < 2:
+        return None
+    scaled = np.zeros_like(pass_angle_X)
+    scaled[valid] = RobustScaler().fit_transform(pass_angle_X[valid])
+    ang = np.full(pass_angle_X.shape[0], -np.inf)
+    hits = np.flatnonzero(valid)
+    ang[hits] = cosine_similarity(scaled[hits], scaled[idx : idx + 1]).ravel()
+    ang[idx] = -np.inf
+    return ang
+
+
 def search_in_pool(
     pool: pl.DataFrame,
     target_row: dict,
@@ -394,12 +494,37 @@ def search_in_pool(
     pca_var: float = DEFAULT_PCA_VAR,
     nmf_k: int = DEFAULT_NMF_K,
     rrf_k: int = DEFAULT_RRF_K,
+    pass_angle_X: np.ndarray | None = None,
 ) -> dict:
-    """RRF-ranked quantitative similarity within a fixed FBref pool."""
+    """RRF-ranked quantitative similarity within a fixed FBref pool.
+
+    When `pass_angle_X` is aligned to `pool` and the target has a finite
+    row, the pass-tendency features are median-imputed and appended to the
+    FBref feature matrix (early fusion), so the Cosine / KNN-PCA / Spearman
+    / NMF rankers are all computed on them as real inputs. RoleBlocks stays
+    FBref-only. A cosine of the raw pass-tendency vectors is still returned
+    (`pass_angle_cos`) purely as a report readout, not as an RRF channel.
+    """
     idx = _pool_target_idx(pool, target_row)
     pos_group = target_row["primary_pos"]
+
+    # Early fusion: append the (median-imputed) pass-angle features to the
+    # FBref columns so they feed the similarity rankers as genuine inputs.
+    sim_pool = pool
+    sim_cols = list(feature_cols)
+    pass_angle_used = False
+    if pass_angle_X is not None:
+        filled = _augment_pass_angle_features(pass_angle_X, idx)
+        if filled is not None:
+            pa_names = [f"pass_angle::{name}" for name in par.PASS_ANGLE_FEATURE_NAMES]
+            sim_pool = pool.with_columns(
+                [pl.Series(nm, filled[:, j]) for j, nm in enumerate(pa_names)]
+            )
+            sim_cols = sim_cols + pa_names
+            pass_angle_used = True
+
     q = {"pca_var": pca_var, "nmf_k": nmf_k}
-    art = fit_pool(pool, feature_cols, q)
+    art = fit_pool(sim_pool, sim_cols, q)
 
     X_scaled = art["X_scaled"]
     pcaed = art["pcaed"]
@@ -424,7 +549,10 @@ def search_in_pool(
     sp[idx] = -np.inf
     scores["Spearman"] = sp
 
-    roles, role_names, _ = role_matrix(X_scaled, feature_cols, pos_group)
+    # RoleBlocks stays FBref-only — the pass-angle columns (appended last)
+    # are not part of any role block, so slice them back off here.
+    role_X = X_scaled[:, : len(feature_cols)]
+    roles, role_names, _ = role_matrix(role_X, feature_cols, pos_group)
     role_cos = cosine_similarity(roles, roles[idx : idx + 1]).ravel().astype(float)
     role_cos[idx] = -np.inf
     scores["RoleBlocks"] = role_cos
@@ -433,6 +561,12 @@ def search_in_pool(
     nmf_cos = cosine_similarity(W_norm, W_norm[idx : idx + 1]).ravel().astype(float)
     nmf_cos[idx] = -np.inf
     scores["NMF"] = nmf_cos
+
+    # Not an RRF channel: the pass-angle tendency is already fused into the
+    # feature matrix above. This cosine is kept only for the report readout.
+    pass_angle_cos = (
+        _pass_angle_cosine(pass_angle_X, idx) if pass_angle_X is not None else None
+    )
 
     rrf = np.zeros(n)
     ranks: dict[str, np.ndarray] = {}
@@ -445,10 +579,14 @@ def search_in_pool(
     rrf[idx] = -np.inf
 
     order = np.argsort(rrf)[::-1][:top_n]
+    extra_cols = []
+    if pass_angle_cos is not None:
+        extra_cols.append(pl.Series("pass_angle_cos", pass_angle_cos[order]))
     consensus = pool[order.tolist()].select(
         "player", "team", "league", POS_COL, "primary_pos", "age"
     ).with_columns(
         pl.Series("rrf_score", rrf[order]),
+        *extra_cols,
         *[
             pl.Series(f"{name}_rank", ranks[name][order].astype(int))
             for name in scores
@@ -464,6 +602,8 @@ def search_in_pool(
         "consensus": consensus,
         "n_pca": art["n_pca"],
         "pca_var_explained": art["pca_var_explained"],
+        "pass_angle_used": pass_angle_used,
+        "pass_angle_cos": pass_angle_cos,
     }
 
 
@@ -526,8 +666,11 @@ def analyze(
 ) -> dict:
     """Assign touch (+ action-map) cluster, then find + profile quantitatively similar cluster mates.
 
-    `save_maps_dir`, if given, saves the target's touch/pass/take-on/shot/
-    defensive-action maps as separate PNGs (see `_save_target_maps`).
+    `save_maps_dir`, if given, saves the target's touch/pass/pass-angle/
+    take-on/shot/defensive-action maps as separate PNGs (see `_save_target_maps`).
+    Pass-angle tendency is computed for every cluster mate and fused into
+    the stage-2 feature matrix as extra inputs (early fusion); the target's
+    own numbers also live on `touch_target["pass_angles"]`.
     """
     touch_target, cluster_mates, cluster_label = _run_touchmap_cluster(
         player_name,
@@ -593,6 +736,12 @@ def analyze(
         }
 
     pos_group = target_row["primary_pos"]
+    vec_by = touch_target.get("pass_angle_vec_by_player") or {}
+    stats_by = touch_target.get("pass_angle_stats_by_player") or {}
+    pass_angle_X, stats_by_pool_idx = _align_pass_angles_to_pool(
+        pool, cluster_mates, vec_by, stats_by
+    )
+
     quant = search_in_pool(
         pool,
         target_row,
@@ -601,6 +750,7 @@ def analyze(
         pca_var=pca_var,
         nmf_k=nmf_k,
         rrf_k=rrf_k,
+        pass_angle_X=pass_angle_X,
     )
 
     target_profile = profile_from_pool_row(
@@ -612,7 +762,11 @@ def analyze(
         weakness_cutoff=weakness_cutoff,
         top_stats=top_stats,
     )
+    target_profile["pass_angles"] = stats_by_pool_idx.get(quant["idx"]) or touch_target.get(
+        "pass_angles"
+    )
 
+    ang_scores = quant.get("pass_angle_cos")
     quant_profiles: list[dict] = []
     for rank, pool_idx in enumerate(quant["order"], start=1):
         prof = profile_from_pool_row(
@@ -626,6 +780,10 @@ def analyze(
         )
         prof["quant_rank"] = rank
         prof["rrf_score"] = float(quant["rrf"][pool_idx])
+        prof["pass_angles"] = stats_by_pool_idx.get(int(pool_idx))
+        if ang_scores is not None:
+            cos = float(ang_scores[pool_idx])
+            prof["pass_angle_cos"] = cos if np.isfinite(cos) else None
         quant_profiles.append(prof)
 
     return {
@@ -694,6 +852,14 @@ def print_profile_block(
     for row in profile["roles"].iter_rows(named=True):
         print(f"    {row['role']}: {row['score']:+.2f}")
 
+    # Target tendency is printed once above step 2; repeats here for matches.
+    pass_angles = profile.get("pass_angles")
+    if pass_angles and label != "TARGET":
+        cos = profile.get("pass_angle_cos")
+        cos_bit = f"  |  cosine vs target {cos:+.3f}" if cos is not None else ""
+        print(f"\n  Pass angle tendency{cos_bit}:")
+        print(par.format_pass_angle_summary(pass_angles))
+
 
 def print_report(result: dict) -> None:
     t = result["touch_target"]
@@ -722,12 +888,25 @@ def print_report(result: dict) -> None:
     if maps_saved:
         print(f"  maps saved: {', '.join(f'{name}={path}' for name, path in maps_saved.items())}")
 
+    pass_angles = t.get("pass_angles")
+    if pass_angles:
+        print("\n=== Pass angle tendency ===")
+        print(par.format_pass_angle_summary(pass_angles))
+    else:
+        print("\n=== Pass angle tendency ===")
+        print("  (no directed passes)")
+
     quant_search = result.get("quant_search")
     if quant_search:
+        angle_bit = (
+            ", pass-angle features fused"
+            if quant_search.get("pass_angle_used")
+            else ", pass-angle skipped"
+        )
         print(
             f"\n=== Step 2: quantitative matches within cluster "
             f"(pca={quant_search['n_pca']}, "
-            f"{100 * quant_search['pca_var_explained']:.0f}% var) ==="
+            f"{100 * quant_search['pca_var_explained']:.0f}% var{angle_bit}) ==="
         )
         if result.get("quant_matches") is not None:
             print(result["quant_matches"])
@@ -776,7 +955,10 @@ def _montage_from_quant(result: dict) -> pd.DataFrame | None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Touch-map cluster assignment + quantitative FBref similarity within cluster."
+        description=(
+            "Touch-map cluster assignment + quantitative FBref similarity "
+            "within cluster (pass-angle tendency is a stage-2 RRF channel)."
+        )
     )
     parser.add_argument("player", help="Target player (partial, case-insensitive)")
     parser.add_argument("--team", default=None, help="Disambiguate touch-map / FBref lookup")
@@ -818,8 +1000,8 @@ def main() -> None:
         "--save-maps",
         default=None,
         metavar="DIR",
-        help="Save the target's touch/pass/take-on/shot/defensive-action maps "
-        "as separate PNGs in this directory",
+        help="Save the target's touch/pass/pass-angle/take-on/shot/defensive-action "
+        "maps as separate PNGs in this directory",
     )
     args = parser.parse_args()
 

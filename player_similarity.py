@@ -11,6 +11,8 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 import polars.selectors as cs
+
+from name_utils import normalize_name, normalized_col
 from scipy.stats import rankdata
 from sklearn.decomposition import NMF, PCA
 from sklearn.metrics.pairwise import cosine_similarity
@@ -191,12 +193,16 @@ def _ensure_loaded(path: Path | str = DATA_PATH) -> tuple[pl.DataFrame, list[str
 
 def resolve_target(df: pl.DataFrame, q: dict) -> tuple[dict, pl.DataFrame]:
     matches = df.with_row_index().filter(
-        pl.col("player").str.contains("(?i)" + q["player"])
+        normalized_col("player").str.contains(normalize_name(q["player"]), literal=True)
     )
     if q.get("team"):
-        matches = matches.filter(pl.col("team").str.contains("(?i)" + q["team"]))
+        matches = matches.filter(
+            normalized_col("team").str.contains(normalize_name(q["team"]), literal=True)
+        )
     if q.get("league"):
-        matches = matches.filter(pl.col("league").str.contains("(?i)" + q["league"]))
+        matches = matches.filter(
+            normalized_col("league").str.contains(normalize_name(q["league"]), literal=True)
+        )
     if matches.height == 0:
         raise ValueError(
             f"no player matching {q['player']!r} "
