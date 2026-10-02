@@ -11,3 +11,6 @@ mplsoccer==1.6.1
 pyfonts==1.4.0
 soccerdata==1.9.0
 lxml==4.9.4
+# Only needed to refresh the Sofascore CSV (`--scrape` / `--scrape-ages`);
+# the UI itself just reads the cached CSV.
+ScraperFC==4.5.0

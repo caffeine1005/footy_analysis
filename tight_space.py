@@ -16,16 +16,17 @@ So instead of measuring distance, this measures **congestion** and grades
 performance against it:
 
   1. A league-wide congestion field: defensive actions per on-ball touch, per
-     pitch cell. Structural, exogenous, and steep — the central penalty box runs
-     ~2.7 defensive actions per touch against ~0.12 in deep wide areas.
+     pitch cell. Structural, exogenous, and steep — in the Premier League the
+     central penalty-spot cells run ~2.9 defensive actions per touch and the
+     goalmouth ~7, against ~0.02-0.15 across the defensive half.
   2. Situational tightness on top of location: how long the possession has been
      running (settled play against a set block is tighter than transition) and
      how deep/high the opponent's defensive block is currently engaging.
   3. A `difficulty` model — P(lose the ball) from *situation only*, no player
      identity and no action choice. Its calibrated output is the tightness score
      each event is bucketed on.
-  4. Sub-skill models that add the player's *intent* (action type, pass length
-     and direction, body part). Residuals against these measure execution given
+  4. Sub-skill models that add the player's *intent* (action type, pass
+     direction and kind, body part). Residuals against these measure execution given
      what the player chose to attempt, which is what removes the role confound:
      a centre-back's safe sideways ball and a striker's forward flick in the box
      no longer share one baseline.
@@ -63,6 +64,8 @@ CLI:
 
     python tight_space.py --leagues "ENG-Premier League" --top 25
     python tight_space.py --sort-by axis_beating_man --role MF --top 20
+    python tight_space.py --role MF-C --top 20       # central midfielders only
+    python tight_space.py --role wide                # wide players on any line
     python tight_space.py --player "Bruno Fernandes"
     python tight_space.py --validate --external-check --out tight_space_scores.csv
 """
@@ -122,6 +125,10 @@ LINE_TO_ROLE = {1: "GK", 2: "DF", 3: "MF", 4: "FW"}
 # while guaranteeing both peer groups are large enough to z-score against.
 MIN_ROLE_GROUP = 20
 
+# Open-play on-ball actions needed before a player's median lateral position is
+# trusted enough to put them on the central or wide side of their line.
+MIN_SPLIT_ACTIONS = 50
+
 # Rolling window (in defensive actions) used to estimate where a team is
 # currently defending. Short enough to track a shift in block height within a
 # half, long enough not to swing on a single clearance.
@@ -149,6 +156,29 @@ def _qualifier_value(series: pd.Series, name: str) -> pd.Series:
     """Pull a single qualifier's numeric value out of the raw string."""
     pattern = rf"'displayName': '{re.escape(name)}'[^}}]*}}, 'value': '([-\d.]+)'"
     return pd.to_numeric(series.fillna("").str.extract(pattern, expand=False), errors="coerce")
+
+
+def defensive_action_mask(events: pd.DataFrame) -> pd.Series:
+    """Defensive actions, keeping only the defending side of paired events.
+
+    `Aerial` and `Foul` are logged once per player involved, each in that team's
+    own frame. Mirroring both halves of a pair counts the attacker's half at the
+    wrong end of the pitch, so an aerial won in the box also added congestion deep
+    in the attacker's own half. Fouls resolve by outcome: `Unsuccessful` is the
+    player who committed it. Aerials have no such marker, so the defending side is
+    the team that did *not* have the last non-aerial event, i.e. the side the ball
+    was played towards. Requires `events` in within-match event order.
+    """
+    is_def = events["type"].isin(DEF_ACTION_TYPES) & events["x"].notna()
+    is_aerial = events["type"].eq("Aerial")
+    possessor = events["team_id"].where(~is_aerial).groupby(events["game_id"]).ffill()
+    aerial_defender = possessor.notna() & events["team_id"].ne(possessor)
+    committed_foul = events["outcome_type"].eq("Unsuccessful")
+    return (
+        is_def
+        & (~is_aerial | aerial_defender)
+        & (events["type"].ne("Foul") | committed_foul)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +263,7 @@ def build_congestion_field(events: pd.DataFrame, bins: tuple[int, int] = BINS) -
     """Count defensive actions per on-ball touch in each cell, pooled over all matches."""
     nx, ny = bins
     on_ball = events[events["type"].isin(ATTACKING_ON_BALL) & events["x"].notna()]
-    defn = events[events["type"].isin(DEF_ACTION_TYPES) & events["x"].notna()]
+    defn = events[defensive_action_mask(events)]
 
     tgx, tgy = cell_index(on_ball["x"], on_ball["y"], bins)
     dgx, dgy = cell_index(100.0 - defn["x"], 100.0 - defn["y"], bins)
@@ -294,7 +324,7 @@ def _annotate_match(g: pd.DataFrame) -> pd.DataFrame:
     # the attacker's point of view, is the defence winning the ball". Rolling
     # over prior defensive actions only, and shifted, so it never sees the
     # current event's outcome.
-    defn = g[g["type"].isin(DEF_ACTION_TYPES) & g["x"].notna()]
+    defn = g[defensive_action_mask(g)]
     g["block_height"] = np.nan
     if not defn.empty:
         for def_team, d in defn.groupby("team_id"):
@@ -349,8 +379,7 @@ def refine_roles(roles: pd.DataFrame, actions: pd.DataFrame) -> pd.DataFrame:
     lateral = (
         actions.assign(_dev=(actions["y"] - 50.0).abs())
         .groupby("player_id")["_dev"]
-        .median()
-        .rename("lateral_dev")
+        .agg(lateral_dev="median", lateral_n="size")
         .reset_index()
     )
     out = roles.merge(lateral, on="player_id", how="outer")
@@ -358,9 +387,11 @@ def refine_roles(roles: pd.DataFrame, actions: pd.DataFrame) -> pd.DataFrame:
 
     # Only players with enough of a sample to place get split; the rest keep the
     # bare line so they are never assigned to a peer group on a handful of touches.
-    med = out.groupby("role")["lateral_dev"].transform("median")
+    # They are also left out of the median, so they cannot move the cut for others.
+    placed = out["lateral_n"].fillna(0) >= MIN_SPLIT_ACTIONS
+    med = out["lateral_dev"].where(placed).groupby(out["role"]).transform("median")
     side = np.where(
-        out["lateral_dev"].isna() | med.isna(), "",
+        ~placed | med.isna(), "",
         np.where(out["lateral_dev"] >= med, "-W", "-C"),
     )
     out["role_group"] = out["role"] + side
@@ -430,12 +461,18 @@ def difficulty_diagnostics(actions: pd.DataFrame, n_bins: int = 10) -> pd.DataFr
 
 
 def _pass_features(passes: pd.DataFrame) -> pd.DataFrame:
-    """Situation plus the pass the player actually attempted."""
+    """Situation plus the pass the player actually attempted.
+
+    Pass end coordinates, and the `Length` derived from them, are left out on
+    purpose. For an unsuccessful pass they record where the ball was cut out, not
+    where it was aimed: half of failed passes end within 3 units of the opponent's
+    next event. That leaks the outcome into the baseline (a pass that "only
+    travelled 5m" is one that was blocked) and shrinks exactly the residual being
+    measured. `Angle` survives, because an interception lies along the intended
+    line, and the qualifier flags below record the kind of pass that was attempted.
+    """
     f = passes[SITUATION_FEATURES].copy()
-    f["length"] = _qualifier_value(passes["qualifiers"], "Length")
     f["angle"] = _qualifier_value(passes["qualifiers"], "Angle")
-    f["dx"] = passes["end_x"] - passes["x"]
-    f["dy"] = passes["end_y"] - passes["y"]
     f["cross"] = _has_qualifier(passes["qualifiers"], "Cross").astype(int)
     f["longball"] = _has_qualifier(passes["qualifiers"], "Longball").astype(int)
     f["headpass"] = _has_qualifier(passes["qualifiers"], "HeadPass").astype(int)
@@ -496,6 +533,22 @@ def build_expectations(actions: pd.DataFrame, ev: pd.DataFrame) -> dict[str, pd.
     ].copy()
     out["foul_won"] = fouls_won
 
+    # Expected fouls won per action, from where on the pitch the action happened.
+    # Raw fouls per touch mostly measures *where* a player gets the ball — box and
+    # final-third touches draw far more fouls than deep ones — so without this a
+    # striker banks credit just for position. Fouls are not attached to a single
+    # action, so the baseline is a per-cell rate: league fouls won in the cell over
+    # league open-play actions in the cell. Both are in the fouled team's own frame.
+    foul_counts = np.zeros(BINS)
+    action_counts = np.zeros(BINS)
+    np.add.at(foul_counts, cell_index(fouls_won["x"], fouls_won["y"]), 1)
+    agx, agy = cell_index(actions["x"], actions["y"])
+    np.add.at(action_counts, (agx, agy), 1)
+    foul_rate = np.divide(
+        foul_counts, action_counts, out=np.zeros_like(foul_counts), where=action_counts > 0
+    )
+    actions["exp_foul_won"] = foul_rate[agx, agy]
+
     out["retain"] = actions
     return out
 
@@ -505,14 +558,16 @@ def build_expectations(actions: pd.DataFrame, ev: pd.DataFrame) -> dict[str, pd.
 # ---------------------------------------------------------------------------
 
 
-def _shrink(raw: pd.Series, n: pd.Series, k: float) -> pd.Series:
-    """Pull small-sample rates toward the population mean.
+def _shrink(raw: pd.Series, n: pd.Series, k: float, prior: float) -> pd.Series:
+    """Pull small-sample rates toward the population mean `prior`.
 
     `k` is the sample size at which a player's own record and the prior carry
     equal weight, so a player with 30 tight take-ons is not ranked above one with
-    300 on the strength of noise.
+    300 on the strength of noise. The prior is passed in rather than assumed to
+    be 0: out-of-fold residuals average close to zero but not exactly, and any gap
+    would otherwise leak into scores in proportion to how *small* a sample is.
     """
-    return raw * (n / (n + k))
+    return prior + (raw - prior) * (n / (n + k))
 
 
 # Per sub-skill: which fitted subset it reads, whether the congestion filter
@@ -534,13 +589,48 @@ def _shrink(raw: pd.Series, n: pd.Series, k: float) -> pd.Series:
 # flipped component availability between the two halves of the reliability test,
 # so a player was scored on a different weighted mix in each half, which alone
 # held the composite at r ~ 0.33 while its own best component sat at 0.55. A
-# shrunk score of ~0 expresses "no information" and keeps the weighting stable,
+# shrunk score at the population mean expresses "no information" and keeps the weighting stable,
 # where a NaN silently re-weights everything else.
 COMPONENT_SPEC = {
     "pass": {"source": "pass", "tight_only": True, "k": 120.0, "min_n": 15},
     "dribble": {"source": "takeon", "tight_only": False, "k": 25.0, "min_n": 4},
     "aerial": {"source": "aerial", "tight_only": False, "k": 25.0, "min_n": 4},
 }
+
+# Shrinkage half-weight for fouls won, in on-ball actions. Fouls are rare (a few
+# per 100 actions), so it takes a few hundred actions before a player's own rate
+# says more than the league's.
+FOULS_WON_K = 300.0
+
+
+def _blend(frame: pd.DataFrame, spec: dict[str, float], prefix: str) -> np.ndarray:
+    """Weighted mean over present members, renormalised so absence is not a penalty."""
+    w = np.array([spec[c] for c in spec])
+    Z = frame[[f"{prefix}{c}" for c in spec]].to_numpy()
+    wsum = ((~np.isnan(Z)) * w).sum(axis=1)
+    return np.where(
+        wsum > 0, np.nansum(np.nan_to_num(Z) * w, axis=1) / np.where(wsum > 0, wsum, 1), np.nan
+    )
+
+
+def apply_axis_weights(
+    scores: pd.DataFrame, axis_weights: dict[str, float] | None = None
+) -> pd.DataFrame:
+    """Re-fuse the axes into the summary score under a different preference.
+
+    The axes themselves are the measurement; the blend across them is only a
+    stated preference, so changing it needs nothing refitted — the per-role
+    `z_axis_*` columns already in the table are all it reads. That makes the
+    summary score cheap to re-derive from a saved score table, which is what the
+    desktop UI's axis-weight sliders do.
+    """
+    axis_weights = axis_weights or DEFAULT_AXIS_WEIGHTS
+    out = scores.copy()
+    out["tight_space_score"] = _blend(
+        out, {f"axis_{a}": w for a, w in axis_weights.items()}, "z_"
+    )
+    out["tight_pct"] = out.groupby("role_group")["tight_space_score"].rank(pct=True) * 100
+    return out.sort_values("tight_space_score", ascending=False).reset_index(drop=True)
 
 
 def score_players(
@@ -587,7 +677,9 @@ def score_players(
         .reset_index()[key + ["retain_raw"]]
     )
     out = out.merge(ret, on=key, how="left")
-    out["retain_score"] = _shrink(out["retain_raw"], out["tight_actions"], 150.0)
+    # The event-weighted mean residual, which is the population mean of retain_raw.
+    retain_prior = (t_actions["difficulty"].mean() - t_actions["lost"].mean()) * 100
+    out["retain_score"] = _shrink(out["retain_raw"], out["tight_actions"], 150.0, retain_prior)
 
     for label, spec in COMPONENT_SPEC.items():
         df = expectations[spec["source"]]
@@ -601,7 +693,8 @@ def score_players(
             .agg(n=("fail", "size"), a=("fail", "mean"), e=("exp_fail", "mean"))
             .reset_index()
         )
-        agg[f"{label}_score"] = _shrink((agg["e"] - agg["a"]) * 100, agg["n"], spec["k"])
+        prior = (sub["exp_fail"].mean() - sub["fail"].mean()) * 100
+        agg[f"{label}_score"] = _shrink((agg["e"] - agg["a"]) * 100, agg["n"], spec["k"], prior)
         agg.loc[agg["n"] < spec["min_n"], f"{label}_score"] = np.nan
         agg = agg.rename(columns={"n": f"{label}_n"})
         out = out.merge(agg[key + [f"{label}_n", f"{label}_score"]], on=key, how="left")
@@ -611,6 +704,16 @@ def score_players(
     out = out.merge(fouls, on=key, how="left")
     out["fouls_won"] = out["fouls_won"].fillna(0).astype(int)
     out["fouls_won_p100"] = 100 * out["fouls_won"] / out["actions_total"].replace(0, np.nan)
+
+    # Fouls won above what the player's touch locations would draw on average, per
+    # 100 actions. `fouls_won_p100` stays as the raw rate for reference; this is
+    # the version graded against a baseline like every other component.
+    exp_fouls = actions.groupby(key)["exp_foul_won"].sum().rename("_exp_fouls").reset_index()
+    out = out.merge(exp_fouls, on=key, how="left")
+    fouls_raw = 100 * (out["fouls_won"] - out["_exp_fouls"]) / out["actions_total"]
+    fouls_prior = 100 * (len(expectations["foul_won"]) - actions["exp_foul_won"].sum()) / len(actions)
+    out["fouls_won_score"] = _shrink(fouls_raw, out["actions_total"], FOULS_WON_K, fouls_prior)
+    out = out.drop(columns="_exp_fouls")
 
     out = out.merge(roles, on="player_id", how="left")
     out["role"] = out["role"].fillna("UNK")
@@ -638,15 +741,6 @@ def score_players(
     _z(out, COMPONENT_COLS)
     out["tight_share_pct"] = out.groupby("role_group")["tight_share"].rank(pct=True) * 100
 
-    def _blend(frame: pd.DataFrame, spec: dict[str, float], prefix: str) -> np.ndarray:
-        """Weighted mean over present members, renormalised so absence is not a penalty."""
-        w = np.array([spec[c] for c in spec])
-        Z = frame[[f"{prefix}{c}" for c in spec]].to_numpy()
-        wsum = ((~np.isnan(Z)) * w).sum(axis=1)
-        return np.where(
-            wsum > 0, np.nansum(np.nan_to_num(Z) * w, axis=1) / np.where(wsum > 0, wsum, 1), np.nan
-        )
-
     for axis, spec in AXES.items():
         # Reliability-discounted weights within the axis, so a weak member
         # (aerials replicate at only r ~ 0.07) cannot dilute its axis.
@@ -658,14 +752,10 @@ def score_players(
     # Re-standardise each axis within role so the axes are on a common scale
     # before any cross-axis blending.
     _z(out, AXIS_COLS)
-    out["tight_space_score"] = _blend(
-        out, {f"axis_{a}": w for a, w in axis_weights.items()}, "z_"
-    )
-    out["tight_pct"] = out.groupby("role_group")["tight_space_score"].rank(pct=True) * 100
 
     present = ~out[COMPONENT_COLS].isna().to_numpy()
     out["components_used"] = present.sum(axis=1)
-    return out.sort_values("tight_space_score", ascending=False).reset_index(drop=True)
+    return apply_axis_weights(out, axis_weights)
 
 
 # ---------------------------------------------------------------------------
@@ -694,7 +784,7 @@ AXES = {
     # Beating the man. Independent of retention, so genuinely separate information.
     "beating_man": {"dribble_score": 1.00},
     # Out-muscling: winning contact and drawing fouls rather than avoiding them.
-    "winning_contact": {"fouls_won_p100": 0.80, "aerial_score": 0.20},
+    "winning_contact": {"fouls_won_score": 0.80, "aerial_score": 0.20},
 }
 COMPONENT_PRIOR = {c: w for spec in AXES.values() for c, w in spec.items()}
 COMPONENT_COLS = list(COMPONENT_PRIOR)
@@ -918,6 +1008,47 @@ def build(
     }
 
 
+SIDE_ALIASES = {"C": "C", "CENTRAL": "C", "CENTRE": "C", "CENTER": "C", "W": "W", "WIDE": "W"}
+
+
+def filter_by_role(scores: pd.DataFrame, spec: str | None) -> pd.DataFrame:
+    """Restrict a score table to the positions named in `spec`.
+
+    `spec` is a comma-separated union of any of:
+      - a formation line (`DF`, `MF`, `FW`), matching every player on that line;
+      - a line plus side (`MF-C`, `DF-W`), matching that exact `role_group`;
+      - a side alone (`C`/`central`, `W`/`wide`), matching that side on any line.
+
+    Players whose sample was too small to place, or whose group was too small to
+    stand alone, carry the bare line as `role_group`, so they match a line filter
+    but never a side filter.
+    """
+    if not spec:
+        return scores
+    mask = pd.Series(False, index=scores.index)
+    for part in spec.split(","):
+        token = part.strip().upper()
+        if not token:
+            continue
+        line, _, side = token.partition("-")
+        if not side and line in SIDE_ALIASES:
+            line, side = "", SIDE_ALIASES[line]
+        elif side:
+            if side not in SIDE_ALIASES:
+                raise ValueError(f"unknown side {side!r} in {part!r}; expected C or W")
+            side = SIDE_ALIASES[side]
+        if line and line not in set(LINE_TO_ROLE.values()) - {"GK"}:
+            raise ValueError(f"unknown line {line!r} in {part!r}; expected DF, MF or FW")
+
+        hit = pd.Series(True, index=scores.index)
+        if line:
+            hit &= scores["role"] == line
+        if side:
+            hit &= scores["role_group"].str.endswith(f"-{side}")
+        mask |= hit
+    return scores[mask]
+
+
 def axis_correlations(scores: pd.DataFrame) -> pd.DataFrame:
     """Correlation between the axes, to show they carry independent information.
 
@@ -943,7 +1074,10 @@ if __name__ == "__main__":
     parser.add_argument("--min-tight-actions", type=int, default=120)
     parser.add_argument("--top", type=int, default=25)
     parser.add_argument("--player", default=None, help="Show one player's card instead of the leaderboard")
-    parser.add_argument("--role", default=None, help="Restrict the leaderboard to DF/MF/FW")
+    parser.add_argument("--role", default=None,
+                        help="Restrict the leaderboard by position: a line (DF/MF/FW), a line "
+                             "and side (MF-C, DF-W), or a side alone (C/central, W/wide). "
+                             "Comma-separate to combine, e.g. 'MF-C,FW-C'")
     parser.add_argument("--sort-by", default=None,
                         help="Rank on one axis instead of the blend, e.g. axis_retention, "
                              "axis_beating_man, axis_winning_contact, tight_share")
@@ -1017,7 +1151,12 @@ if __name__ == "__main__":
                   f"({row['tight_pct']:.0f}th pct) — a preference-weighted mix of "
                   "near-independent axes, not a single measured trait")
     else:
-        board = scores if args.role is None else scores[scores["role"] == args.role.upper()]
+        try:
+            board = filter_by_role(scores, args.role)
+        except ValueError as exc:
+            raise SystemExit(str(exc))
+        if board.empty:
+            raise SystemExit(f"no scored players match --role {args.role!r}")
         if args.sort_by:
             # Drop unscored rows, or the bottom of the table fills with players who
             # simply had too few of that action to be graded on it.
@@ -1025,7 +1164,8 @@ if __name__ == "__main__":
                 args.sort_by, ascending=False
             )
         label = args.sort_by or "tight_space_score"
-        print(f"\ntop {args.top} by {label} — percentiles are within role")
+        scope = f" ({args.role})" if args.role else ""
+        print(f"\ntop {args.top}{scope} by {label} — percentiles are within role")
         print(board.head(args.top)[display].round(1).to_string(index=False))
         print(f"\nbottom 10 of {len(board)}")
         print(board.tail(10)[display].round(1).to_string(index=False))

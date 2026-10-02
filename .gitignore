@@ -1,0 +1,28 @@
+# Derived caches for the desktop app: rebuilt from league_games/ on demand.
+# The events pickle alone is ~1.7GB, so this must never be committed.
+.desktop_cache/
+
+# Virtual environments
+venv/
+.venv/
+**/venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# IDE
+.idea/
+
+# Data / generated output
+league_games/
+logs/
+match_xg/
+low_block_plots/
+player_xg_diff/
+*.csv
+*.csv.bak
+*.csv.pre_ages
+*.zip
+*.png
+*.gpg.key

@@ -72,6 +72,34 @@ def _pass_outcomes(passes: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd
     return completed, incomplete, blocked
 
 
+# Chance-creation tiers, highest first: a pass takes the first tier whose
+# WhoScored qualifier it carries. `KeyPass` = the pass directly before a shot
+# (it's also on every assist, hence the priority order); `IntentionalGoalAssist`
+# is Opta's official assist, so deflected "assists" to goals are not counted.
+CREATION_TIERS = [
+    ("assist", "IntentionalGoalAssist", GOAL_COLOR, "Assist"),
+    ("big_chance", "BigChanceCreated", "#C77DFF", "Big chance created"),
+    ("key_pass", "KeyPass", "#3FA9F5", "Key pass (led to shot)"),
+]
+
+
+def _pass_creation_kind(passes: pd.DataFrame) -> pd.Series:
+    """'assist' / 'big_chance' / 'key_pass', or NaN for every other pass."""
+    q = passes["qualifiers"].fillna("")
+    kind = pd.Series(pd.NA, index=passes.index, dtype="object")
+    for name, qualifier, _, _ in reversed(CREATION_TIERS):
+        kind[q.str.contains(f"'{qualifier}'", regex=False)] = name
+    return kind
+
+
+def _pass_creation_outcomes(passes: pd.DataFrame) -> tuple[pd.DataFrame, ...]:
+    """One frame per `CREATION_TIERS` entry, in that order — matches `pass_map`'s
+    gold/purple/blue highlights. Tiers are exclusive, so an assist is not also
+    counted as a key pass."""
+    kind = _pass_creation_kind(passes)
+    return tuple(passes[kind == name] for name, _, _, _ in CREATION_TIERS)
+
+
 def _takeon_outcomes(takeons: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """(won, lost) — matches `takeon_map`'s green/red coloring."""
     won = takeons[takeons["outcome_type"] == "Successful"]
@@ -129,6 +157,7 @@ def pass_map(
     success_color: str = SUCCESS_COLOR,
     fail_color: str = FAIL_COLOR,
     show_unsuccessful: bool = True,
+    highlight_creation: bool = True,
 ):
     """Every pass by `player_name`: an arrow from origin to end point.
 
@@ -136,6 +165,10 @@ def pass_map(
     have no end coordinate and are drawn as an X at the origin instead). A
     small dot marks the origin of every arrow so start and end are both
     explicit, not just implied by the arrow's direction.
+
+    With `highlight_creation`, passes that led to a shot are pulled out of
+    the green/red layers and drawn on top in their `CREATION_TIERS` color
+    (assist gold, big chance purple, key pass blue), with a legend.
     """
     events = player_events(season_df, player_name, team=team, exact=exact)
     passes = events[events["type"].isin(PASS_TYPES)]
@@ -154,14 +187,30 @@ def pass_map(
     ax.set_facecolor(pitch_color)
 
     completed, incomplete, blocked = _pass_outcomes(passes)
+    n_completed = len(completed)
+
+    creation = []
+    fade = 1.0
+    if highlight_creation:
+        with_end = passes[passes["end_x"].notna()]
+        for subset, (_, _, color, label) in zip(
+            _pass_creation_outcomes(with_end), CREATION_TIERS
+        ):
+            creation.append((subset, color, label))
+        created = _pass_creation_kind(passes).notna()
+        completed = completed[~created.loc[completed.index]]
+        incomplete = incomplete[~created.loc[incomplete.index]]
+        if created.any():
+            # Chance-creating passes are the story; fade the rest back.
+            fade = 0.6
 
     if not show_unsuccessful:
         incomplete = incomplete.iloc[0:0]
         blocked = blocked.iloc[0:0]
 
     for subset, color, alpha, z in (
-        (incomplete, fail_color, 0.55, 2),
-        (completed, success_color, 0.75, 3),
+        (incomplete, fail_color, 0.55 * fade, 2),
+        (completed, success_color, 0.75 * fade, 3),
     ):
         if len(subset):
             pitch.arrows(
@@ -179,8 +228,34 @@ def pass_map(
             color=fail_color, linewidth=2, zorder=3,
         )
 
+    # Lowest tier first so assists sit on top of everything.
+    handles = []
+    for z, (subset, color, label) in enumerate(reversed(creation), start=5):
+        if len(subset):
+            pitch.arrows(
+                subset["x"], subset["y"], subset["end_x"], subset["end_y"],
+                ax=ax, color=color, width=2.2, headwidth=4.5, headlength=4.5,
+                alpha=0.95, zorder=z,
+            )
+            pitch.scatter(
+                subset["x"], subset["y"], ax=ax, s=28, color=color,
+                edgecolors="white", linewidth=0.6, zorder=z,
+            )
+        handles.append(plt.Line2D(
+            [], [], color=color, lw=2.5, label=f"{label} ({len(subset)})",
+        ))
+    if handles:
+        leg = ax.legend(
+            handles=handles[::-1], loc="lower center", bbox_to_anchor=(0.5, -0.07),
+            ncol=len(handles), frameon=False, fontsize=8, labelcolor="white",
+            handlelength=1.6, columnspacing=1.2,
+        )
+        if font is not None:
+            for t in leg.get_texts():
+                t.set_fontproperties(font)
+
     n_games = passes["game_id"].nunique()
-    n_completed, n_total = len(completed), len(passes)
+    n_total = len(passes)
     pct = 100 * n_completed / n_total if n_total else 0.0
     _title(
         ax,

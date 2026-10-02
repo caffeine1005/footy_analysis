@@ -1,0 +1,27 @@
+{
+  "scales": [
+    1.0
+  ],
+  "weights": {
+    "touch": 3.0,
+    "pass": 3.0,
+    "takeon": 0.0,
+    "shot": 1.5,
+    "defensive": 3.0,
+    "pass_completed": 3.0,
+    "pass_incomplete": 3.0,
+    "pass_blocked": 0.0,
+    "takeon_won": 0.0,
+    "takeon_lost": 0.0,
+    "shot_goal": 0.0,
+    "shot_ontarget": 0.0,
+    "shot_offtarget": 0.0,
+    "shot_blocked": 0.0,
+    "defensive_won": 0.5,
+    "defensive_lost": 0.0,
+    "chance_assist": 0.0,
+    "chance_big_chance": 0.0,
+    "chance_key_pass": 0.0,
+    "creation_rates": 1.0
+  }
+}
