@@ -93,7 +93,27 @@ def collect_league_events(
 
 
 def load_season_events(save_dir: str | Path = "utd_games") -> pd.DataFrame:
-    """Concatenate every cached game csv in `save_dir` without touching the scraper."""
+    """Concatenate every cached game csv in `save_dir` without touching the scraper.
+
+    A season directory is hundreds of csvs, so `analysis_cache` keeps the
+    concatenated frame between calls, keyed on those files' names, sizes and
+    mtimes.
+    """
+    import analysis_cache
+
+    return analysis_cache.cached_events(
+        analysis_cache.dir_events_key(save_dir),
+        lambda: read_season_csvs(save_dir),
+    )
+
+
+def read_season_csvs(save_dir: str | Path = "utd_games") -> pd.DataFrame:
+    """`load_season_events` without the cache, for callers that cache the result themselves.
+
+    `load_all_league_events` pools seven of these into one frame and caches
+    that; going through the cached per-directory reader as well would store the
+    same events twice over.
+    """
     paths = sorted(glob.glob(str(Path(save_dir) / "*.csv")))
     if not paths:
         raise FileNotFoundError(f"no game csvs found in {save_dir}")

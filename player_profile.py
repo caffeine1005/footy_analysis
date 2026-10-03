@@ -42,7 +42,8 @@ from sklearn.preprocessing import RobustScaler
 import pass_angle_radar as par
 import player_action_maps as pam
 import touchmap_similarity as tms
-from name_utils import normalize_name, normalized_col, strip_accents
+from name_utils import normalize_name, normalized_col
+from team_utils import teams_match
 from player_similarity import (
     DATA_PATH,
     MINUTES_COL,
@@ -74,21 +75,8 @@ def pretty_stat(col: str) -> str:
     return col
 
 
-def _team_tokens(name: str) -> set[str]:
-    return set(re.findall(r"[a-z0-9]+", strip_accents(name).lower()))
-
-
 def _teams_overlap(a: str | None, b: str | None) -> bool:
-    if not a or not b:
-        return True
-    ta, tb = _team_tokens(a), _team_tokens(b)
-    if not ta or not tb:
-        return True
-    if ta & tb:
-        return True
-    a_norm = re.sub(r"[^a-z0-9]", "", strip_accents(a).lower())
-    b_norm = re.sub(r"[^a-z0-9]", "", strip_accents(b).lower())
-    return a_norm in b_norm or b_norm in a_norm
+    return teams_match(a, b)
 
 
 def resolve_fbref_row(

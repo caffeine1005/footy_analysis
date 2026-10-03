@@ -36,16 +36,19 @@ from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import euclidean_distances
 
 from name_utils import normalize_name, normalize_series
+from team_utils import teams_match
 from player_action_maps import (
     DEFENSIVE_TYPES,
     PASS_TYPES,
     TAKEON_TYPES,
+    CREATION_TIERS,
     _defensive_outcomes,
+    _pass_creation_outcomes,
     _pass_outcomes,
     _shot_outcomes,
     _takeon_outcomes,
 )
-from player_touchmaps import _slug, load_season_events
+from player_touchmaps import _slug, load_season_events, read_season_csvs
 
 DEFAULT_BINS = (12, 8)  # (x_bins, y_bins) across the opta 0-100 pitch
 DEFAULT_MIN_TOUCHES = 30
@@ -79,31 +82,47 @@ def load_all_league_events(
     leagues: list[str] | None = None,
     season: int | str = DEFAULT_SEASON,
     events_root: str | Path = "league_games",
+    persist: bool = True,
 ) -> pd.DataFrame:
-    """Concatenate cached game csvs for every collected league, tagging each row with `league`."""
+    """Concatenate cached game csvs for every collected league, tagging each row with `league`.
+
+    Reading ~2,300 csvs takes the best part of a minute, and the result only
+    changes when the csvs themselves do, so `analysis_cache` keeps the
+    concatenated frame on disk and in memory between calls. `persist=False`
+    reads that cache but does not add to it (see `analysis_cache.cached_events`).
+    """
+    import analysis_cache
+
     leagues = leagues or list(DEFAULT_LEAGUES)
-    frames = []
-    missing = []
-    for league in leagues:
-        save_dir = Path(events_root) / _league_slug(league, season)
-        try:
-            df = load_season_events(save_dir)
-        except FileNotFoundError:
-            missing.append(str(save_dir))
-            continue
-        df = df.copy()
-        df["league"] = league
-        frames.append(df)
-    if not frames:
-        raise FileNotFoundError(
-            f"no game csvs found for leagues {leagues} under {events_root}"
-            + (f" (missing: {', '.join(missing)})" if missing else "")
-        )
-    if missing:
-        print(f"warning: skipped leagues with no cached games: {', '.join(missing)}", flush=True)
-    loaded = [f["league"].iloc[0] for f in frames]
-    print(f"loaded events from {len(loaded)} leagues: {', '.join(loaded)}", flush=True)
-    return pd.concat(frames, ignore_index=True)
+
+    def build() -> pd.DataFrame:
+        frames = []
+        missing = []
+        for league in leagues:
+            save_dir = Path(events_root) / _league_slug(league, season)
+            try:
+                df = read_season_csvs(save_dir)
+            except FileNotFoundError:
+                missing.append(str(save_dir))
+                continue
+            df = df.copy()
+            df["league"] = league
+            frames.append(df)
+        if not frames:
+            raise FileNotFoundError(
+                f"no game csvs found for leagues {leagues} under {events_root}"
+                + (f" (missing: {', '.join(missing)})" if missing else "")
+            )
+        if missing:
+            print(
+                f"warning: skipped leagues with no cached games: {', '.join(missing)}", flush=True
+            )
+        loaded = [f["league"].iloc[0] for f in frames]
+        print(f"loaded events from {len(loaded)} leagues: {', '.join(loaded)}", flush=True)
+        return pd.concat(frames, ignore_index=True)
+
+    key = analysis_cache.league_events_key(leagues, season, events_root)
+    return analysis_cache.cached_events(key, build, persist=persist)
 
 
 def build_touch_grids(
@@ -223,6 +242,8 @@ ACTION_OUTCOME_LABELS = {
     "takeon": ("won", "lost"),
     "shot": ("goal", "ontarget", "offtarget", "blocked"),
     "defensive": ("won", "lost"),
+    # pass_map's gold/purple/blue highlights: where a player creates chances from.
+    "chance": tuple(name for name, _, _, _ in CREATION_TIERS),
 }
 
 
@@ -243,6 +264,7 @@ def _outcome_event_sets(season_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
         "takeon": _takeon_outcomes(takeons),
         "shot": _shot_outcomes(shots),
         "defensive": _defensive_outcomes(defensive),
+        "chance": _pass_creation_outcomes(passes),
     }
     return {
         f"{action}_{label}": subset
@@ -283,12 +305,110 @@ def build_outcome_grids(
     return blocks
 
 
+PLAY_PERIODS = ("FirstHalf", "SecondHalf", "FirstPeriodOfExtraTime", "SecondPeriodOfExtraTime")
+SENT_OFF_CARDS = ("Red", "SecondYellow")
+
+# Per-90 rates appended by `build_creation_rates`: one per `CREATION_TIERS`
+# entry plus their sum. The shape blocks above are L1-normalized, so they say
+# *where* a player creates from but not *how often* — these carry the volume.
+CREATION_RATE_COLS = [f"{name}_p90" for name, _, _, _ in CREATION_TIERS] + ["chances_created_p90"]
+# Floors the per-90 denominator so a 20-minute cameo with one key pass does not
+# read as 4.5 key passes per 90.
+MIN_RATE_MINUTES = 270.0
+
+
+def estimate_minutes(season_df: pd.DataFrame, group_cols: list[str]) -> pd.Series:
+    """Minutes played per `group_cols` key, inferred from the event stream.
+
+    WhoScored event csvs have no minutes column, so per player-game: on at 0
+    (or their `SubstitutionOn`), off at their `SubstitutionOff` / red card or
+    the game's last in-play event. Uses `expanded_minute`, which counts
+    stoppage time, so a full game is ~95 minutes rather than 90 — the same
+    for every player, so rates stay comparable. Unused subs log no events and
+    so never appear.
+    """
+    play = season_df[season_df["period"].isin(PLAY_PERIODS)]
+    game_end = play.groupby("game_id")["expanded_minute"].max()
+
+    ev = play[play["player"].notna()]
+    keys = ["game_id", *group_cols]
+    apps = ev[keys].drop_duplicates().set_index(keys)
+    on = ev[ev["type"] == "SubstitutionOn"].groupby(keys)["expanded_minute"].min()
+    off_events = ev[
+        (ev["type"] == "SubstitutionOff") | ev["card_type"].isin(SENT_OFF_CARDS)
+    ]
+    off = off_events.groupby(keys)["expanded_minute"].min()
+
+    apps["on"] = on.reindex(apps.index).fillna(0.0)
+    end = game_end.reindex(apps.index.get_level_values("game_id")).to_numpy()
+    apps["off"] = off.reindex(apps.index).fillna(pd.Series(end, index=apps.index))
+    apps["minutes"] = (apps["off"] - apps["on"]).clip(lower=0)
+    return apps.groupby(level=group_cols)["minutes"].sum()
+
+
+def creation_rates(season_df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
+    """`minutes` plus `CREATION_RATE_COLS` (per 90) for every `group_cols` key.
+
+    Counts come from `_pass_creation_outcomes`, i.e. exactly the passes
+    `pass_map` highlights, so the tiers stay exclusive (an assist is not also
+    a key pass) and `chances_created_p90` is their plain sum.
+    """
+    passes = season_df[season_df["type"].isin(PASS_TYPES) & season_df["player"].notna()]
+    out = estimate_minutes(season_df, group_cols).to_frame("minutes")
+    denom = out["minutes"].clip(lower=MIN_RATE_MINUTES) / 90.0
+    for (name, _, _, _), subset in zip(CREATION_TIERS, _pass_creation_outcomes(passes)):
+        counts = subset.groupby(group_cols).size().reindex(out.index, fill_value=0)
+        out[f"{name}_p90"] = counts / denom
+    tier_cols = CREATION_RATE_COLS[:-1]
+    out["chances_created_p90"] = out[tier_cols].sum(axis=1)
+    return out
+
+
+def build_creation_rates(
+    season_df: pd.DataFrame,
+    meta: pd.DataFrame,
+    weight: float = 1.0,
+    ref_quantile: float = 0.95,
+) -> np.ndarray:
+    """`CREATION_RATE_COLS` as a feature block, row-aligned with `meta`.
+
+    Each rate is divided by its `ref_quantile` across `meta` and clipped to
+    [0, 1], so an elite creator sits at 1 regardless of whether the rate is
+    assists (~0.3/90) or key passes (~2/90). The block is then scaled by
+    `weight / n_rates`: after `cluster_players`' sqrt, the whole group can
+    move a player at most about as far as one shape block does, so volume
+    informs the match without swamping the positional signal. Raise `weight`
+    to lean harder on how *much* a player creates.
+    """
+    has_league = "league" in meta.columns
+    group_cols = ["player", "team", "league"] if has_league else ["player", "team"]
+    rates = creation_rates(season_df, group_cols)
+    keys = pd.MultiIndex.from_frame(meta[group_cols])
+    R = rates.reindex(keys)[CREATION_RATE_COLS].fillna(0.0).to_numpy()
+    ref = np.quantile(R, ref_quantile, axis=0)
+    ref[ref <= 0] = 1.0
+    R = np.clip(R / ref, 0.0, 1.0)
+    return R * (weight / len(CREATION_RATE_COLS))
+
+
+def feature_layout(include_outcomes: bool = True, include_creation_rates: bool = True) -> dict:
+    """What `build_combined_grids` stacks into X — part of the grids cache key,
+    so adding a block can never serve a stale, narrower X."""
+    return {
+        "actions": list(ACTION_TYPE_SPECS),
+        "outcomes": ACTION_OUTCOME_LABELS if include_outcomes else None,
+        "rates": CREATION_RATE_COLS if include_creation_rates else None,
+        "rate_floor": MIN_RATE_MINUTES,
+    }
+
+
 def build_combined_grids(
     season_df: pd.DataFrame,
     min_touches: int = DEFAULT_MIN_TOUCHES,
     bins: tuple[int, int] = DEFAULT_BINS,
     smooth_sigma: float = 1.0,
     include_outcomes: bool = True,
+    include_creation_rates: bool = True,
 ) -> tuple[pd.DataFrame, np.ndarray]:
     """Touch shape + pass/take-on/shot/defensive-action shapes, concatenated per player.
 
@@ -301,6 +421,9 @@ def build_combined_grids(
     just where a player passes/dribbles/shoots/defends but whether it works
     there — the same success/fail coloring the action maps render visually.
     All blocks share the same pitch grid, so directly comparable.
+    With `include_creation_rates` (default), a small per-90 block
+    (`build_creation_rates`) is appended last, so how *often* a player
+    creates chances counts too, not just where from.
     `cluster_players` then groups players by positional *and* behavioral
     shape instead of touch location alone.
     """
@@ -312,6 +435,8 @@ def build_combined_grids(
     if include_outcomes:
         outcome_blocks = build_outcome_grids(season_df, meta, bins=bins, smooth_sigma=smooth_sigma)
         blocks.extend(outcome_blocks[name] for name in outcome_blocks)
+    if include_creation_rates:
+        blocks.append(build_creation_rates(season_df, meta))
     X = np.hstack(blocks)
     return meta, X
 
@@ -350,6 +475,138 @@ def cluster_players(
     }
 
 
+def feature_block_names() -> list[str]:
+    """Heatmap blocks of `build_combined_grids`' X, in column order (rates follow)."""
+    names = ["touch", *ACTION_TYPE_SPECS]
+    names += [f"{a}_{o}" for a, outs in ACTION_OUTCOME_LABELS.items() for o in outs]
+    return names
+
+
+# Per-block weights for the similarity space, learned by `benchmark_similarity.py
+# --tune` (a player's own previous season at the same club should rank near him)
+# on 13/14-20/21 and checked on 22/23-25/26: median rank of the right answer
+# 140 -> 52 of ~3,300. The data-rich blocks carry the signal; the sparse ones
+# (goals, assists, blocked passes, chance locations) are too few events a season
+# to be anything but noise, so they drop out. Missing names weigh 0.
+SHAPE_BLOCK_WEIGHTS = {
+    "touch": 3.0,
+    "pass": 3.0,
+    "shot": 1.5,
+    "defensive": 3.0,
+    "pass_completed": 3.0,
+    "pass_incomplete": 3.0,
+    "defensive_won": 0.5,
+    "creation_rates": 1.0,
+}
+
+
+def shape_column_weights(n_cols: int, bins: tuple[int, int] = DEFAULT_BINS) -> np.ndarray | None:
+    """`SHAPE_BLOCK_WEIGHTS` spread over X's columns, or None for a touch-only X."""
+    cells = bins[0] * bins[1]
+    names = feature_block_names()
+    if n_cols != len(names) * cells + len(CREATION_RATE_COLS):
+        return None
+    w = np.repeat([SHAPE_BLOCK_WEIGHTS.get(n, 0.0) for n in names], cells)
+    rates = np.full(len(CREATION_RATE_COLS), SHAPE_BLOCK_WEIGHTS.get("creation_rates", 0.0))
+    return np.concatenate([w, rates])
+
+
+def mirror_heatmaps(X: np.ndarray, bins: tuple[int, int] = DEFAULT_BINS) -> np.ndarray:
+    """Flip every heatmap block across the pitch's long axis (left ↔ right flank).
+
+    WhoScored/Opta always attacks toward x=100; flank is the y axis. Each block
+    is reshaped as (y_bins, x_bins) — mplsoccer's layout for `bins=(x, y)` —
+    then reversed on y. Trailing non-grid columns (creation rates) are left as-is.
+    """
+    x_bins, y_bins = bins
+    cells = x_bins * y_bins
+    grid = (y_bins, x_bins)  # rows = width (y), cols = length (x)
+    X = np.asarray(X, dtype=np.float64)
+    single = X.ndim == 1
+    if single:
+        X = X.reshape(1, -1)
+    n_blocks = X.shape[1] // cells
+    out = X.copy()
+    for i in range(n_blocks):
+        sl = slice(i * cells, (i + 1) * cells)
+        out[:, sl] = out[:, sl].reshape(-1, *grid)[:, ::-1, :].reshape(len(out), cells)
+    return out[0] if single else out
+
+
+def flip_event_flanks(events: pd.DataFrame) -> pd.DataFrame:
+    """Mirror event coordinates left ↔ right (y → 100−y). Attack direction (x) stays."""
+    out = events.copy()
+    for col in ("y", "end_y", "goal_mouth_y", "blocked_y"):
+        if col in out.columns:
+            out[col] = 100.0 - out[col]
+    return out
+
+
+def _weighted_hellinger(X: np.ndarray, weighted: bool = True) -> np.ndarray:
+    X_hell = np.sqrt(np.asarray(X, dtype=np.float64))
+    colw = shape_column_weights(X.shape[1]) if weighted else None
+    if colw is not None:
+        X_hell = X_hell[:, colw > 0] * colw[colw > 0]
+    return X_hell
+
+
+def fit_shape_pca(
+    X: np.ndarray,
+    pca_var: float = 0.90,
+    random_state: int = 42,
+    weighted: bool = True,
+) -> tuple[np.ndarray, PCA]:
+    """Hellinger (+ optional block weights) → PCA coords and the fitted model."""
+    X_hell = _weighted_hellinger(X, weighted=weighted)
+    pca = PCA(n_components=pca_var, svd_solver="full", random_state=random_state)
+    coords = pca.fit_transform(X_hell).astype(np.float32)
+    return coords, pca
+
+
+def project_shapes(
+    pca: PCA,
+    X: np.ndarray,
+    weighted: bool = True,
+) -> np.ndarray:
+    """Project shape vectors with a PCA already fit by `fit_shape_pca` / `embed_shapes`."""
+    return pca.transform(_weighted_hellinger(X, weighted=weighted)).astype(np.float32)
+
+
+def embed_shapes(
+    X: np.ndarray,
+    pca_var: float = 0.90,
+    random_state: int = 42,
+    weighted: bool = True,
+) -> np.ndarray:
+    """Shape vectors -> the space similar-player pools are cut in.
+
+    Same Hellinger (sqrt) + PCA geometry as `cluster_players`, without the
+    KMeans, and with `SHAPE_BLOCK_WEIGHTS` applied: pools are the target's
+    nearest neighbours here rather than its cluster (see
+    `eval_pool_methods.py` and `benchmark_similarity.py` for why).
+    """
+    coords, _ = fit_shape_pca(
+        X, pca_var=pca_var, random_state=random_state, weighted=weighted
+    )
+    return coords
+
+
+def nearest_rows(coords: np.ndarray, target: int, rows: np.ndarray, n: int) -> np.ndarray:
+    """The `n` rows of `rows` nearest `target` in `coords`, closest first (target included)."""
+    d = np.linalg.norm(coords[rows] - coords[target], axis=1)
+    keep = np.argsort(d, kind="stable")[: max(1, n)]
+    return rows[keep]
+
+
+def nearest_rows_to_point(
+    coords: np.ndarray, query: np.ndarray, rows: np.ndarray, n: int
+) -> np.ndarray:
+    """The `n` rows of `rows` nearest `query` in `coords`, closest first."""
+    d = np.linalg.norm(coords[rows] - np.asarray(query, dtype=np.float64), axis=1)
+    keep = np.argsort(d, kind="stable")[: max(1, n)]
+    return rows[keep]
+
+
 def _player_label(row) -> str:
     league = row["league"] if "league" in row.index and pd.notna(row["league"]) else None
     if league:
@@ -369,12 +626,12 @@ def resolve_player(
             normalize_name(player_name), regex=False
         )
     ]
-    if team is not None:
-        matched = matched[
-            normalize_series(matched["team"]).str.contains(
-                normalize_name(team), regex=False
-            )
-        ]
+    if team is not None and not matched.empty:
+        by_team = matched[matched["team"].map(lambda t: teams_match(team, t))]
+        # Narrowing hint only, so a source-specific label ("PSG" vs
+        # "Paris Saint-Germain") can't wipe out a valid name match.
+        if not by_team.empty:
+            matched = by_team
     if league is not None and "league" in matched.columns:
         matched = matched[
             normalize_series(matched["league"]).str.contains(

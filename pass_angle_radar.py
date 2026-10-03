@@ -242,6 +242,47 @@ def pass_angle_feature_vector(stats: dict) -> np.ndarray:
     )
 
 
+# Left ↔ right bin order under a flank flip (Forward/Backward stay put).
+_MIRROR_BIN_ORDER = (0, 7, 6, 5, 4, 3, 2, 1)
+
+
+def mirror_pass_angle_features(vec: np.ndarray) -> np.ndarray:
+    """Reflect a `PASS_ANGLE_FEATURE_NAMES` vector across the pitch long axis."""
+    out = np.asarray(vec, dtype=float).copy()
+    if out.shape[-1] != len(PASS_ANGLE_FEATURE_NAMES):
+        raise ValueError(
+            f"expected {len(PASS_ANGLE_FEATURE_NAMES)} pass-angle features, got {out.shape[-1]}"
+        )
+    out[..., :N_BINS] = out[..., _MIRROR_BIN_ORDER]
+    # mean_angle_sin is the last feature; left ↔ right flips its sign.
+    out[..., -1] = -out[..., -1]
+    return out
+
+
+def mirror_pass_angle_stats(stats: dict) -> dict:
+    """Reflect `summarize_pass_angles` / `pass_angle_stats` output left ↔ right."""
+    if not stats:
+        return stats
+    out = dict(stats)
+    bins = list(stats.get("bins") or [])
+    if len(bins) == N_BINS:
+        mirrored = [dict(bins[i]) for i in _MIRROR_BIN_ORDER]
+        for row, label in zip(mirrored, BIN_LABELS):
+            row["label"] = label
+        out["bins"] = mirrored
+    quads = stats.get("quadrants")
+    if isinstance(quads, dict):
+        out["quadrants"] = {
+            "forward": float(quads.get("forward", 0.0)),
+            "right": float(quads.get("left", 0.0)),
+            "backward": float(quads.get("backward", 0.0)),
+            "left": float(quads.get("right", 0.0)),
+        }
+    if "mean_angle_deg" in stats and stats["mean_angle_deg"] is not None:
+        out["mean_angle_deg"] = float((360.0 - float(stats["mean_angle_deg"])) % 360.0)
+    return out
+
+
 def pass_angle_features_for_players(
     season_df: pd.DataFrame,
     pairs: list[tuple[str, str]],
